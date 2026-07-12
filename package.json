@@ -1,0 +1,49 @@
+{
+  "name": "baseball-portfolio",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "remotion:studio": "remotion studio remotion/index.ts",
+    "video:landscape": "remotion render remotion/index.ts DiamondPortfolio-Landscape out/diamond-landscape.mp4",
+    "video:vertical": "remotion render remotion/index.ts DiamondPortfolio-Vertical out/diamond-vertical.mp4"
+  },
+  "dependencies": {
+    "@ffmpeg/core": "^0.12.10",
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
+    "@imgly/background-removal": "^1.7.0",
+    "@mux/mux-player-react": "^3.13.0",
+    "@remotion/cli": "^4.0.330",
+    "@remotion/player": "^4.0.330",
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.95.3",
+    "framer-motion": "^12.34.0",
+    "lucide-react": "^1.24.0",
+    "next": "^16.2.10",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-player": "^3.4.0",
+    "remotion": "^4.0.330",
+    "sharp": "^0.34.5",
+    "stripe": "^22.3.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "^16.2.10",
+    "pg": "^8.18.0",
+    "supabase": "^2.109.1",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  },
+  "overrides": {
+    "postcss": "^8.5.10"
+  }
+}
