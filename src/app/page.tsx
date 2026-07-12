@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowRight, Check, Globe2, Play, Smartphone, Trophy, Video } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Diamond Portfolio | Baseball Player Portfolio Websites",
+  title: "Diamond Profile | Baseball Player Portfolio Websites",
   description: "Build a polished baseball recruiting website with stats, video, academics, and one simple link.",
 };
 
@@ -33,12 +33,12 @@ export default function HomePage() {
   return (
     <main className="bg-[#f7f7f4] text-[#171717]">
       <section className="relative flex min-h-[88svh] max-h-[820px] flex-col overflow-hidden bg-[#172018] text-white">
-        <Image src="/images/baseball-hero.png" alt="Baseball player standing at home plate" fill priority className="object-cover object-[68%_center] sm:object-center" sizes="100vw" />
+        <Image src="/images/baseball-hero-no-people.png" alt="Baseball glove, bat, and baseballs beside home plate" fill priority className="object-cover object-[68%_center] sm:object-center" sizes="100vw" />
         <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(10,15,11,0.96)_0%,rgba(10,15,11,0.76)_38%,rgba(10,15,11,0.12)_74%,rgba(10,15,11,0.12)_100%)]" />
         <header className="relative z-10 border-b border-white/15">
-          <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
-            <Link href="/" aria-label="Diamond Portfolio home">
-              <Image src="/brand-placeholder.svg" alt="Diamond Portfolio" width={240} height={48} className="h-9 w-auto invert" />
+          <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6">
+            <Link href="/" aria-label="Diamond Profile home">
+              <Image src="/diamond-profile-logo.png" alt="Diamond Profile" width={180} height={180} className="h-14 w-14 object-contain" />
             </Link>
             <nav className="flex items-center gap-2">
               <Link href="/auth" className="hidden min-h-11 items-center px-3 text-sm font-semibold text-white/70 hover:text-white sm:flex">Sign in</Link>
@@ -100,7 +100,7 @@ export default function HomePage() {
               <span className="ml-2 text-[11px] text-white/35">alexrivera.com</span>
             </div>
             <div className="relative aspect-[4/3] min-h-[360px] overflow-hidden text-white">
-              <Image src="/images/baseball-hero.png" alt="" fill className="object-cover object-[68%_center] opacity-75" sizes="(min-width:1024px) 60vw, 100vw" />
+              <Image src="/images/baseball-hero-no-people.png" alt="" fill className="object-cover object-[68%_center] opacity-75" sizes="(min-width:1024px) 60vw, 100vw" />
               <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.92),rgba(0,0,0,0.15))]" />
               <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8">
                 <p className="text-xs font-bold uppercase tracking-widest text-red-300">Shortstop / Class of 2027</p>
@@ -194,7 +194,7 @@ export default function HomePage() {
 
       <footer className="border-t border-black/10 bg-white py-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 text-sm text-black/45 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <Image src="/brand-placeholder.svg" alt="Diamond Portfolio" width={240} height={48} className="h-8 w-auto" />
+          <Image src="/diamond-profile-logo.png" alt="Diamond Profile" width={180} height={180} className="h-20 w-20 object-contain" />
           <div className="flex gap-5"><Link href="/builder">Builder</Link><Link href="/auth">Sign in</Link><a href="#pricing">Pricing</a></div>
         </div>
       </footer>

@@ -5,7 +5,7 @@ export function RemotionRoot() {
   return (
     <>
       <Composition
-        id="DiamondPortfolio-Landscape"
+        id="DiamondProfile-Landscape"
         component={MarketingVideo}
         durationInFrames={450}
         fps={30}
@@ -14,7 +14,7 @@ export function RemotionRoot() {
         defaultProps={{ vertical: false }}
       />
       <Composition
-        id="DiamondPortfolio-Vertical"
+        id="DiamondProfile-Vertical"
         component={MarketingVideo}
         durationInFrames={450}
         fps={30}

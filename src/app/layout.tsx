@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Diamond Portfolio | Baseball Player Websites",
+  title: "Diamond Profile | Baseball Player Websites",
   description: "Build a polished baseball recruiting portfolio from your phone.",
 };
 

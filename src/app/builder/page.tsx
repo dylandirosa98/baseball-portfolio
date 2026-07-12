@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import NextImage from "next/image";
 import {
   ArrowDown,
   ArrowLeft,
@@ -345,8 +346,9 @@ export default function BuilderPage() {
               <ArrowLeft className="h-5 w-5" />
             </Link>
 
+            <NextImage src="/diamond-profile-logo.png" alt="" width={48} height={48} className="h-9 w-9 shrink-0 object-contain" />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[11px] font-semibold text-white/40">Diamond Portfolio</p>
+              <p className="truncate text-[11px] font-semibold text-white/40">Diamond Profile</p>
               <h1 className="truncate text-base font-bold sm:text-lg">
                 {draft.firstName ? `${draft.firstName}'s portfolio` : "Build your portfolio"}
               </h1>
@@ -1973,7 +1975,7 @@ function ReviewStep({
             </div>
             <div>
               <h3 className="text-sm font-semibold text-white/85">Find your domain</h3>
-              <p className="mt-1 text-xs leading-5 text-white/40">Choose one now or after subscribing. Diamond Portfolio covers and manages one domain while Premium stays active.</p>
+              <p className="mt-1 text-xs leading-5 text-white/40">Choose one now or after subscribing. Diamond Profile covers and manages one domain while Premium stays active.</p>
             </div>
           </div>
           <form onSubmit={searchDomain} className="mt-4 flex gap-2">

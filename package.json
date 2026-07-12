@@ -8,8 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "remotion:studio": "remotion studio remotion/index.ts",
-    "video:landscape": "remotion render remotion/index.ts DiamondPortfolio-Landscape out/diamond-landscape.mp4",
-    "video:vertical": "remotion render remotion/index.ts DiamondPortfolio-Vertical out/diamond-vertical.mp4"
+    "video:landscape": "remotion render remotion/index.ts DiamondProfile-Landscape out/diamond-landscape.mp4",
+    "video:vertical": "remotion render remotion/index.ts DiamondProfile-Vertical out/diamond-vertical.mp4"
   },
   "dependencies": {
     "@ffmpeg/core": "^0.12.10",

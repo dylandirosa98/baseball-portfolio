@@ -21,7 +21,7 @@ export default async function AccountPage() {
   return (
     <main className="min-h-screen bg-[#0a0a0a] px-4 py-8 text-white">
       <div className="mx-auto max-w-xl">
-        <Image src="/brand-placeholder.svg" alt="Diamond Portfolio" width={240} height={48} className="mb-10 h-10 w-auto invert" />
+        <Image src="/diamond-profile-logo.png" alt="Diamond Profile" width={180} height={180} className="mb-8 h-28 w-28 object-contain" />
         <p className="text-xs font-semibold uppercase tracking-widest text-white/35">Account</p>
         <h1 className="mt-2 text-3xl font-bold">{user.email}</h1>
         <div className="mt-8 grid gap-3">

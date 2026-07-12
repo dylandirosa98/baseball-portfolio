@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
+import Image from "next/image";
 import { ExternalLink, Mail } from "lucide-react";
 import { SocialLink } from "@/lib/types";
 
@@ -41,8 +42,8 @@ export default function SocialFooter({ socialLinks }: SocialFooterProps) {
         </div>
         <div className="mx-auto mb-6 h-px w-12 bg-white/10" />
         <Link href="/" className="inline-flex items-center gap-2 text-xs font-semibold text-white/35 transition hover:text-white/60">
-          <span className="flex h-7 w-7 items-center justify-center rounded-md border border-white/15 font-black">D</span>
-          Made with Diamond Portfolio
+          <Image src="/diamond-profile-logo.png" alt="" width={48} height={48} className="h-9 w-9 object-contain" />
+          Made with Diamond Profile
         </Link>
       </motion.div>
     </footer>

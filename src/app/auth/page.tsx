@@ -56,7 +56,7 @@ export default function AuthPage() {
         <Link href="/builder" className="mb-8 inline-flex min-h-11 items-center gap-2 text-sm text-white/55 hover:text-white">
           <ArrowLeft className="h-4 w-4" /> Back to builder
         </Link>
-        <Image src="/brand-placeholder.svg" alt="Diamond Portfolio" width={240} height={48} className="mb-10 h-10 w-auto invert" priority />
+        <Image src="/diamond-profile-logo.png" alt="Diamond Profile" width={180} height={180} className="mb-8 h-28 w-28 object-contain" priority />
         <h1 className="text-3xl font-bold">{mode === "signup" ? "Save your portfolio" : "Welcome back"}</h1>
         <p className="mt-2 text-sm leading-6 text-white/50">
           {mode === "signup" ? "Create an account to keep your work synced and edit from any device." : "Sign in to continue building your player portfolio."}

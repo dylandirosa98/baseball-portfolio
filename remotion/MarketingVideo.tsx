@@ -19,13 +19,8 @@ function Fade({ children, start, end }: { children: React.ReactNode; start: numb
   return <div style={{ opacity, width: "100%", height: "100%" }}>{children}</div>;
 }
 
-function Brand({ dark = false }: { dark?: boolean }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 18, color: dark ? green : white, fontWeight: 800, fontSize: 34 }}>
-      <div style={{ width: 52, height: 52, borderRadius: 8, background: red, display: "grid", placeItems: "center", color: "white" }}>D</div>
-      DIAMOND PORTFOLIO
-    </div>
-  );
+function Brand({ size = 140 }: { size?: number }) {
+  return <Img src={staticFile("diamond-profile-logo.png")} style={{ width: size, height: size, objectFit: "contain" }} />;
 }
 
 export function MarketingVideo({ vertical }: { vertical: boolean }) {
@@ -40,9 +35,9 @@ export function MarketingVideo({ vertical }: { vertical: boolean }) {
       <Sequence from={0} durationInFrames={125}>
         <Fade start={0} end={125}>
           <AbsoluteFill>
-            <Img src={staticFile("images/baseball-hero.png")} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: vertical ? "66% center" : "center", transform: `scale(${imageScale})` }} />
+            <Img src={staticFile("images/baseball-hero-no-people.png")} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: vertical ? "66% center" : "center", transform: `scale(${imageScale})` }} />
             <AbsoluteFill style={{ background: vertical ? "linear-gradient(0deg, rgba(10,15,11,.96) 0%, rgba(10,15,11,.22) 70%)" : "linear-gradient(90deg, rgba(10,15,11,.96), rgba(10,15,11,.1))" }} />
-            <div style={{ position: "absolute", left: side, right: side, top: vertical ? 110 : 80 }}><Brand /></div>
+            <div style={{ position: "absolute", left: side, right: side, top: vertical ? 110 : 80 }}><Brand size={vertical ? 180 : 140} /></div>
             <div style={{ position: "absolute", left: side, right: side, bottom: vertical ? 170 : 105 }}>
               <p style={{ margin: 0, color: "#fca5a5", fontSize: vertical ? 28 : 24, fontWeight: 800, letterSpacing: 3 }}>ONE LINK. YOUR WHOLE GAME.</p>
               <h1 style={{ margin: "22px 0 0", maxWidth: vertical ? 850 : 980, fontSize: title, lineHeight: .92, letterSpacing: 0 }}>Baseball player portfolio websites</h1>
@@ -89,7 +84,7 @@ export function MarketingVideo({ vertical }: { vertical: boolean }) {
       <Sequence from={340} durationInFrames={110}>
         <Fade start={0} end={110}>
           <AbsoluteFill style={{ background: red, padding: side, justifyContent: "center", alignItems: vertical ? "flex-start" : "center", textAlign: vertical ? "left" : "center" }}>
-            <Brand />
+            <Brand size={vertical ? 190 : 150} />
             <h2 style={{ fontSize: vertical ? 104 : 110, lineHeight: .92, maxWidth: 1400, margin: "60px 0 28px" }}>Make your next introduction count.</h2>
             <p style={{ fontSize: vertical ? 38 : 32, margin: 0, opacity: .82 }}>$29/month / $39 with a custom domain</p>
             <div style={{ marginTop: 56, background: white, color: "#171717", borderRadius: 8, padding: "24px 38px", fontWeight: 900, fontSize: vertical ? 32 : 28 }}>START BUILDING TODAY</div>
