@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Player } from "@/lib/types";
 import MediaCarousel from "./MediaCarousel";
 import { hasMediaSource } from "@/lib/video";
-import { isPlaceholderPlayerImage, playerImageOrFallback } from "@/lib/player-image";
+import { isPlaceholderPlayerImage } from "@/lib/player-image";
 
 interface BioSectionProps {
   player: Player;
@@ -35,21 +35,22 @@ export default function BioSection({ player }: BioSectionProps) {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-6 lg:gap-10">
-          {/* Headshot */}
-          <motion.div
-            className="profile-headshot relative w-28 h-28 lg:w-40 lg:h-40 rounded-2xl overflow-hidden flex-shrink-0 bg-white/5"
-            initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-          >
-            <Image
-              src={playerImageOrFallback(player.headshotUrl)}
-              alt={`${player.firstName} ${player.lastName}`}
-              fill
-              className={defaultHeadshot ? "default-player-image object-contain p-3" : "object-cover"}
-            />
-          </motion.div>
+          {!defaultHeadshot && (
+            <motion.div
+              className="profile-headshot relative w-28 h-28 lg:w-40 lg:h-40 rounded-2xl overflow-hidden flex-shrink-0 bg-white/5"
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              <Image
+                src={player.headshotUrl}
+                alt={`${player.firstName} ${player.lastName}`}
+                fill
+                className="object-cover"
+              />
+            </motion.div>
+          )}
 
           {/* Bio text */}
           <div className="flex-1">
