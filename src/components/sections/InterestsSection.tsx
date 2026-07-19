@@ -10,7 +10,7 @@ export default function InterestsSection({ player }: { player: Player }) {
   if (!player.interests && media.length === 0) return null;
 
   return (
-    <section className="px-5 py-10 lg:max-w-4xl lg:mx-auto">
+    <section data-profile-section="interests" className="profile-section px-5 py-10 lg:max-w-4xl lg:mx-auto">
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}

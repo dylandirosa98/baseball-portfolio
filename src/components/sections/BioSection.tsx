@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Player } from "@/lib/types";
 import MediaCarousel from "./MediaCarousel";
 import { hasMediaSource } from "@/lib/video";
+import { isPlaceholderPlayerImage, playerImageOrFallback } from "@/lib/player-image";
 
 interface BioSectionProps {
   player: Player;
@@ -12,9 +13,10 @@ interface BioSectionProps {
 
 export default function BioSection({ player }: BioSectionProps) {
   const media = (player.media ?? []).filter(hasMediaSource);
+  const defaultHeadshot = isPlaceholderPlayerImage(player.headshotUrl);
 
   return (
-    <section className="px-5 py-12 lg:max-w-4xl lg:mx-auto lg:py-16">
+    <section data-profile-section="about" className="profile-section px-5 py-12 lg:max-w-4xl lg:mx-auto lg:py-16">
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -35,17 +37,17 @@ export default function BioSection({ player }: BioSectionProps) {
         <div className="flex flex-col sm:flex-row gap-6 lg:gap-10">
           {/* Headshot */}
           <motion.div
-            className="relative w-28 h-28 lg:w-40 lg:h-40 rounded-2xl overflow-hidden flex-shrink-0 bg-white/5"
+            className="profile-headshot relative w-28 h-28 lg:w-40 lg:h-40 rounded-2xl overflow-hidden flex-shrink-0 bg-white/5"
             initial={{ opacity: 0, scale: 0.9 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
             <Image
-              src={player.headshotUrl}
+              src={playerImageOrFallback(player.headshotUrl)}
               alt={`${player.firstName} ${player.lastName}`}
               fill
-              className="object-cover"
+              className={defaultHeadshot ? "default-player-image object-contain p-3" : "object-cover"}
             />
           </motion.div>
 

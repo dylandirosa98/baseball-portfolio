@@ -64,6 +64,8 @@ export interface TimelineEntry {
   media: MediaItem[];
 }
 
+export type PlayerDesign = "design-1" | "design-2" | "design-3";
+
 export interface Player {
   slug: string;
   firstName: string;
@@ -81,11 +83,13 @@ export interface Player {
   bio: string;
   headshotUrl: string;
   heroImageUrl: string;
+  heroImageScale?: number;
   currentStats: PlayerStats;
   seasonHistory: SeasonStats[];
   highlights: Highlight[];
   socialLinks: SocialLink[];
   themeColor: string;
+  design?: PlayerDesign;
   highlightReelUrl?: string;
   resumeUrl?: string;
   skillsets?: Skillset[];

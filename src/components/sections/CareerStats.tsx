@@ -37,7 +37,7 @@ export default function CareerStats({ seasons, position }: CareerStatsProps) {
   const items = position === "Pitcher" ? pitcherStats : hitterStats;
 
   return (
-    <section className="px-5 py-12 lg:mx-auto lg:max-w-4xl lg:py-16">
+    <section data-profile-section="career-stats" className="profile-section px-5 py-12 lg:mx-auto lg:max-w-4xl lg:py-16">
       <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
         <div className="mb-6 flex items-center gap-3">
           <div className="h-6 w-1 rounded-full" style={{ backgroundColor: "var(--accent)" }} />

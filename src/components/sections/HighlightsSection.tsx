@@ -176,7 +176,7 @@ export default function HighlightsSection({ highlights, lightMode }: HighlightsS
   function next() { if (index < highlights.length - 1) go(index + 1); }
 
   return (
-    <section className="px-5 py-12 lg:max-w-4xl lg:mx-auto lg:py-16">
+    <section data-profile-section="highlights" className="profile-section px-5 py-12 lg:max-w-4xl lg:mx-auto lg:py-16">
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}

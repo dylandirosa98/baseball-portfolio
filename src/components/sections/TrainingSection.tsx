@@ -102,7 +102,7 @@ export default function TrainingSection({ player, lightMode }: { player: Player;
   function next() { if (index < videos.length - 1) go(index + 1); }
 
   return (
-    <section className="px-5 py-10 lg:max-w-4xl lg:mx-auto">
+    <section data-profile-section="training" className="profile-section px-5 py-10 lg:max-w-4xl lg:mx-auto">
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}

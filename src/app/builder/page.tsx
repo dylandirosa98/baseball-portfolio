@@ -37,7 +37,8 @@ import PlayerTemplate from "@/components/PlayerTemplate";
 import ImageUpload from "@/components/admin/ImageUpload";
 import MediaPhotoUpload from "@/components/admin/MediaPhotoUpload";
 import MediaVideoUpload from "@/components/admin/MediaVideoUpload";
-import type { Highlight, MediaItem, Player, PlayerStats, Skillset, SocialLink } from "@/lib/types";
+import type { Highlight, MediaItem, Player, PlayerDesign, PlayerStats, Skillset, SocialLink } from "@/lib/types";
+import { DEFAULT_PLAYER_IMAGE, normalizedHeroImageScale } from "@/lib/player-image";
 
 const STORAGE_KEY = "diamond_builder_draft_v1";
 const ACTIVE_STEP_KEY = "diamond_builder_active_step_v1";
@@ -73,14 +74,16 @@ const defaultDraft: Player = {
   throws: "Right",
   birthYear: 0,
   bio: "",
-  headshotUrl: "/images/headshot-placeholder.svg",
-  heroImageUrl: "/images/hero-placeholder.svg",
+  headshotUrl: DEFAULT_PLAYER_IMAGE,
+  heroImageUrl: DEFAULT_PLAYER_IMAGE,
+  heroImageScale: 120,
   teamLogoUrl: "",
   currentStats: { ...emptyStats },
   seasonHistory: [],
   highlights: [],
   socialLinks: [],
   themeColor: "#b91c1c",
+  design: "design-1",
   numberColor: "",
   highlightReelUrl: "",
   resumeUrl: "",
@@ -164,9 +167,15 @@ const buttonClass = "inline-flex min-h-11 items-center justify-center gap-2 roun
 
 function mergeDraft(value: unknown): Player {
   if (!value || typeof value !== "object") return defaultDraft;
+  const savedDesign = (value as Partial<Player>).design;
+  const design: PlayerDesign = savedDesign === "design-2" || savedDesign === "design-3" ? savedDesign : "design-1";
+  const savedPlayer = value as Partial<Player>;
+  const heroImageScale = normalizedHeroImageScale(savedPlayer.heroImageUrl, savedPlayer.heroImageScale);
   return {
     ...defaultDraft,
     ...(value as Partial<Player>),
+    design,
+    heroImageScale,
     currentStats: { ...emptyStats, ...((value as Partial<Player>).currentStats ?? {}) },
     seasonHistory: (value as Partial<Player>).seasonHistory ?? [],
     highlights: (value as Partial<Player>).highlights ?? [],
@@ -187,7 +196,7 @@ function completionFor(step: StepId, draft: Player) {
     case "photos":
       return [draft.headshotUrl && !draft.headshotUrl.includes("placeholder"), draft.heroImageUrl && !draft.heroImageUrl.includes("placeholder"), draft.teamLogoUrl].filter(Boolean).length;
     case "style":
-      return [draft.themeColor, draft.numberColor || draft.themeColor].filter(Boolean).length;
+      return [draft.design || "design-1", draft.themeColor, draft.numberColor || draft.themeColor].filter(Boolean).length;
     case "stats":
       return Object.values(draft.currentStats).some((value) => Number(value) > 0) ? 1 : 0;
     case "content":
@@ -840,8 +849,11 @@ function PhotosStep({ draft, update }: { draft: Player; update: (updates: Partia
       <SectionHeader title="Add your photos" body="Strong images make the biggest difference. You can replace any photo later." />
       <div className="divide-y divide-white/10 border-y border-white/10">
         <div className="py-5">
-          <h3 className="text-sm font-semibold text-white/80">Headshot</h3>
-          <p className="mt-1 text-xs text-white/35">A clear, square photo for the profile.</p>
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-sm font-semibold text-white/80">Headshot</h3>
+            <span className="text-xs text-white/30">Optional</span>
+          </div>
+          <p className="mt-1 text-xs text-white/35">Add a clear square photo, or keep the default player silhouette.</p>
           <div className="mt-3">
             <ImageUpload slug={uploadSlug} folder="headshot" currentUrl={draft.headshotUrl} onUpload={(url) => update({ headshotUrl: url })} />
           </div>
@@ -875,7 +887,7 @@ function PhotosStep({ draft, update }: { draft: Player; update: (updates: Partia
           <span className="text-xs font-normal text-white/30">Advanced</span>
         </summary>
         <div className="mt-4 space-y-4">
-          <Field label="Headshot URL"><input className={inputClass} type="url" inputMode="url" value={draft.headshotUrl} onChange={(event) => update({ headshotUrl: event.target.value })} /></Field>
+          <Field label="Headshot URL (optional)"><input className={inputClass} type="url" inputMode="url" value={draft.headshotUrl} onChange={(event) => update({ headshotUrl: event.target.value })} /></Field>
           <Field label="Main photo URL"><input className={inputClass} type="url" inputMode="url" value={draft.heroImageUrl} onChange={(event) => update({ heroImageUrl: event.target.value })} /></Field>
           <Field label="Team logo URL"><input className={inputClass} type="url" inputMode="url" value={draft.teamLogoUrl ?? ""} onChange={(event) => update({ teamLogoUrl: event.target.value })} /></Field>
         </div>
@@ -938,6 +950,70 @@ function StyleStep({ draft, update }: { draft: Player; update: (updates: Partial
     <div>
       <SectionHeader title="Make it feel personal" body="Pick a team color and the page appearance. The preview updates instantly." />
       <div className="space-y-5">
+        <fieldset>
+          <legend className={labelClass}>Portfolio design</legend>
+          <div className="space-y-2">
+            {([
+              { id: "design-1", label: "Design 1", description: "Cinematic" },
+              { id: "design-2", label: "Design 2", description: "Clubhouse" },
+              { id: "design-3", label: "Design 3", description: "Prospect card" },
+            ] as { id: PlayerDesign; label: string; description: string }[]).map((option) => {
+              const active = (draft.design || "design-1") === option.id;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => update({ design: option.id })}
+                  aria-pressed={active}
+                  className={"flex w-full items-center gap-3 rounded-lg border p-2 text-left transition " + (active ? "border-white bg-white/[0.08] ring-1 ring-white/20" : "border-white/10 bg-white/[0.02] hover:border-white/25")}
+                >
+                  <span
+                    aria-hidden
+                    className={"builder-design-thumb " + option.id}
+                    style={{ "--picker-accent": draft.themeColor } as React.CSSProperties}
+                  >
+                    <span /><span /><span />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-bold text-white">{option.label}</span>
+                      {active && <Check className="h-4 w-4 text-emerald-400" />}
+                    </span>
+                    <span className="mt-1 block text-xs text-white/40">{option.description}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
+
+          <div className="mt-5 rounded-lg border border-white/10 bg-white/[0.025] p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <label htmlFor="hero-image-scale" className="text-sm font-semibold text-white/75">Hero image size</label>
+                <p className="mt-1 text-xs text-white/35">Adjust how large the player appears in every design.</p>
+              </div>
+              <span className="rounded-md bg-white/[0.06] px-2 py-1 text-xs font-bold tabular-nums text-white/65">
+                {normalizedHeroImageScale(draft.heroImageUrl, draft.heroImageScale)}%
+              </span>
+            </div>
+            <input
+              id="hero-image-scale"
+              type="range"
+              min="80"
+              max="150"
+              step="5"
+              value={normalizedHeroImageScale(draft.heroImageUrl, draft.heroImageScale)}
+              onChange={(event) => update({ heroImageScale: Number(event.target.value) })}
+              className="mt-4 h-2 w-full cursor-pointer accent-white"
+              aria-label="Hero image size"
+            />
+            <div className="mt-2 flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-white/25">
+              <span>Smaller</span>
+              <button type="button" onClick={() => update({ heroImageScale: 100 })} className="min-h-8 px-2 text-white/45 transition hover:text-white">Reset</button>
+              <span>Larger</span>
+            </div>
+          </div>
         <ColorField label="Team color" value={draft.themeColor} onChange={(themeColor) => update({ themeColor })} />
 
         <fieldset>

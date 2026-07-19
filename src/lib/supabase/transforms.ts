@@ -1,4 +1,4 @@
-import { Player, PlayerWithMeta, Skillset } from "@/lib/types";
+import { Player, PlayerDesign, PlayerWithMeta, Skillset } from "@/lib/types";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -20,11 +20,13 @@ export interface PlayerRow {
   bio: string;
   headshot_url: string;
   hero_image_url: string;
+  hero_image_scale: number | null;
   current_stats: any;
   season_history: any;
   highlights: any;
   social_links: any;
   theme_color: string;
+  design: PlayerDesign | null;
   highlight_reel_url: string | null;
   resume_url: string | null;
   skillsets: Skillset[] | null;
@@ -66,11 +68,13 @@ export function rowToPlayer(row: PlayerRow): PlayerWithMeta {
     bio: row.bio,
     headshotUrl: row.headshot_url,
     heroImageUrl: row.hero_image_url,
+    heroImageScale: row.hero_image_scale ?? undefined,
     currentStats: row.current_stats,
     seasonHistory: row.season_history,
     highlights: row.highlights,
     socialLinks: row.social_links,
     themeColor: row.theme_color,
+    design: row.design ?? "design-1",
     highlightReelUrl: row.highlight_reel_url ?? undefined,
     resumeUrl: row.resume_url ?? undefined,
     skillsets: row.skillsets ?? [],
@@ -127,11 +131,13 @@ export function playerToRow(player: Partial<Player>): Record<string, unknown> {
   if (player.bio !== undefined) row.bio = player.bio;
   if (player.headshotUrl !== undefined) row.headshot_url = player.headshotUrl;
   if (player.heroImageUrl !== undefined) row.hero_image_url = player.heroImageUrl;
+  if (player.heroImageScale !== undefined) row.hero_image_scale = player.heroImageScale;
   if (player.currentStats !== undefined) row.current_stats = player.currentStats;
   if (player.seasonHistory !== undefined) row.season_history = player.seasonHistory;
   if (player.highlights !== undefined) row.highlights = player.highlights;
   if (player.socialLinks !== undefined) row.social_links = player.socialLinks;
   if (player.themeColor !== undefined) row.theme_color = player.themeColor;
+  if (player.design !== undefined) row.design = player.design;
   if (player.highlightReelUrl !== undefined) row.highlight_reel_url = player.highlightReelUrl;
   if (player.resumeUrl !== undefined) row.resume_url = player.resumeUrl;
   if (player.skillsets !== undefined) row.skillsets = player.skillsets;

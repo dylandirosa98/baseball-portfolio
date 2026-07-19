@@ -7,6 +7,7 @@ import { Player } from "@/lib/types";
 import VideoModal from "@/components/VideoModal";
 import PdfModal from "@/components/PdfModal";
 import { detectVideo } from "@/lib/video";
+import { isPlaceholderPlayerImage, normalizedHeroImageScale, playerImageOrFallback } from "@/lib/player-image";
 
 function blendColor(hex: string, opacity: number, bgBase = 10): string {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -44,6 +45,8 @@ function isHeroSocialPlatform(platform: Player["socialLinks"][number]["platform"
 export default function HeroSection({ player }: HeroSectionProps) {
   const [showReel, setShowReel] = useState(false);
   const [showResume, setShowResume] = useState(false);
+  const defaultHeroImage = isPlaceholderPlayerImage(player.heroImageUrl);
+  const heroImageScale = normalizedHeroImageScale(player.heroImageUrl, player.heroImageScale);
   const reelVideo = player.highlightReelUrl ? detectVideo(player.highlightReelUrl) : null;
   const isGdrive = reelVideo?.platform === "gdrive-folder" || reelVideo?.platform === "gdrive-file";
   const bgBase = player.lightMode ? 240 : 10;
@@ -53,7 +56,7 @@ export default function HeroSection({ player }: HeroSectionProps) {
 
   return (
     <>
-      <section className="relative min-h-[50svh] lg:min-h-[75vh] flex items-end overflow-hidden" style={{ paddingTop: "env(safe-area-inset-top)" }}>
+      <section className="design-one-hero relative min-h-[50svh] lg:min-h-[75vh] flex items-end overflow-hidden" style={{ paddingTop: "env(safe-area-inset-top)" }}>
         {/* Gradient background — solid block at top matches theme-color exactly, then fades */}
         <div
           className="absolute inset-0"
@@ -65,17 +68,18 @@ export default function HeroSection({ player }: HeroSectionProps) {
 
         {/* Player cutout image */}
         <motion.div
-          className="absolute inset-0 flex items-end justify-center lg:justify-end pointer-events-none"
+          className="design-one-hero-image-wrap absolute inset-0 flex items-end justify-center lg:justify-end pointer-events-none"
           initial={{ opacity: 0, scale: 1.05 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
         >
-          <div className="relative w-full max-w-[440px] lg:max-w-[520px] xl:max-w-[580px] h-[95%] lg:mr-[10%] xl:mr-[15%]">
+          <div className="design-one-hero-image relative w-full max-w-[440px] lg:max-w-[520px] xl:max-w-[580px] h-[95%] lg:mr-[10%] xl:mr-[15%]">
             <Image
-              src={player.heroImageUrl}
+              src={playerImageOrFallback(player.heroImageUrl)}
               alt={`${player.firstName} ${player.lastName}`}
               fill
-              className="object-contain object-bottom"
+              className={"object-contain object-bottom" + (defaultHeroImage ? " default-player-image" : "")}
+              style={{ transform: "scale(" + heroImageScale / 100 + ")", transformOrigin: "bottom center" }}
               priority
             />
           </div>
@@ -94,7 +98,7 @@ export default function HeroSection({ player }: HeroSectionProps) {
         />
 
         {/* Content */}
-        <div className="relative w-full px-5 pb-10 pt-20 z-10 lg:max-w-5xl lg:mx-auto lg:px-10 lg:pb-16">
+        <div className="design-one-hero-content relative w-full px-5 pb-10 pt-20 z-10 lg:max-w-5xl lg:mx-auto lg:px-10 lg:pb-16">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -102,7 +106,7 @@ export default function HeroSection({ player }: HeroSectionProps) {
           >
             {/* Number */}
             <motion.span
-              className="text-[8rem] lg:text-[12rem] leading-none font-black absolute -bottom-2 right-2 lg:right-7 select-none"
+              className="design-one-hero-number text-[8rem] lg:text-[12rem] leading-none font-black absolute -bottom-2 right-2 lg:right-7 select-none"
               style={{ color: player.numberColor || player.themeColor }}
               initial={{ opacity: 0, x: 40 }}
               animate={{ opacity: player.lightMode ? 0.5 : 0.3, x: 0 }}
@@ -114,7 +118,7 @@ export default function HeroSection({ player }: HeroSectionProps) {
             {/* Team Logo — above name */}
             {player.teamLogoUrl && (
               <motion.div
-                className="relative w-24 h-24 lg:w-32 lg:h-32 mb-4"
+                className="design-one-team-logo relative w-24 h-24 lg:w-32 lg:h-32 mb-4"
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
@@ -131,7 +135,7 @@ export default function HeroSection({ player }: HeroSectionProps) {
 
             {/* Name */}
             <h1
-              className="text-5xl sm:text-7xl lg:text-8xl xl:text-9xl font-black leading-[0.9] tracking-tight"
+              className="design-one-hero-name text-5xl sm:text-7xl lg:text-8xl xl:text-9xl font-black leading-[0.9] tracking-tight"
               style={{
                 textShadow: player.lightMode
                   ? "0 2px 16px rgba(0,0,0,0.25), 0 1px 6px rgba(0,0,0,0.2)"
@@ -139,7 +143,7 @@ export default function HeroSection({ player }: HeroSectionProps) {
               }}
             >
               <span
-                className="block text-white/40 text-2xl sm:text-3xl lg:text-4xl font-medium mb-1"
+                className="design-one-first-name block text-white/40 text-2xl sm:text-3xl lg:text-4xl font-medium mb-1"
                 style={{
                   textShadow: player.lightMode
                     ? "0 1px 10px rgba(0,0,0,0.2)"
@@ -153,7 +157,7 @@ export default function HeroSection({ player }: HeroSectionProps) {
 
             {/* Quick Info */}
             <motion.div
-              className="flex gap-4 mt-2 text-xs lg:text-sm text-white/40"
+              className="design-one-hero-meta flex gap-4 mt-2 text-xs lg:text-sm text-white/40"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.5, delay: 0.5 }}
@@ -166,7 +170,7 @@ export default function HeroSection({ player }: HeroSectionProps) {
 
           {/* CTA Buttons */}
           <motion.div
-            className="grid grid-cols-2 gap-1.5 mt-4 max-w-[55%] lg:max-w-none lg:flex lg:flex-wrap lg:gap-3 [&>*]:justify-center [&>*]:w-full lg:[&>*]:w-auto [&>*]:!px-2.5 [&>*]:!py-1.5 [&>*]:!text-[10px] lg:[&>*]:!px-5 lg:[&>*]:!py-2.5 lg:[&>*]:!text-sm [&>*:last-child:nth-child(odd)]:col-span-2 lg:[&>*:last-child:nth-child(odd)]:col-span-1"
+            className="design-one-hero-actions grid grid-cols-2 gap-1.5 mt-4 max-w-[55%] lg:max-w-none lg:flex lg:flex-wrap lg:gap-3 [&>*]:justify-center [&>*]:w-full lg:[&>*]:w-auto [&>*]:!px-2.5 [&>*]:!py-1.5 [&>*]:!text-[10px] lg:[&>*]:!px-5 lg:[&>*]:!py-2.5 lg:[&>*]:!text-sm [&>*:last-child:nth-child(odd)]:col-span-2 lg:[&>*:last-child:nth-child(odd)]:col-span-1"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.6 }}

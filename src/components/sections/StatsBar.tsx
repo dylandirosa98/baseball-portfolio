@@ -57,7 +57,7 @@ export default function StatsBar({ stats, position }: StatsBarProps) {
   const items = position === "Pitcher" ? pitcherStats : hitterStats;
 
   return (
-    <section className="px-5 pb-2 pt-6 lg:mx-auto lg:max-w-4xl lg:pb-4 lg:pt-10">
+    <section data-profile-section="stats" className="profile-section profile-stats-section px-5 pb-2 pt-6 lg:mx-auto lg:max-w-4xl lg:pb-4 lg:pt-10">
       <motion.div
         className="grid grid-cols-3 gap-2 sm:grid-cols-6"
         initial={{ opacity: 0, y: 18 }}
