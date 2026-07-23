@@ -1066,21 +1066,23 @@ body {
 
 @container player-profile (max-width: 767px) {
   .alternate-hero--split {
-    min-height: 720px;
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: clamp(300px, 48svh, 410px) auto;
   }
 
   .split-hero-copy {
-    order: 2;
-    min-height: 390px;
+    grid-row: 2;
+    min-height: 0;
     justify-content: flex-end;
-    padding: 2rem 1.25rem 3rem;
-    background: linear-gradient(to bottom, transparent, #0b0c0e 22%);
+    margin-top: -3.5rem;
+    padding: 1.5rem 1.25rem 2rem;
+    background: linear-gradient(to bottom, transparent, #0b0c0e 3.5rem);
   }
 
   .player-light .split-hero-copy {
-    background: linear-gradient(to bottom, transparent, #f2eee7 22%);
+    background: linear-gradient(to bottom, transparent, #f2eee7 3.5rem);
   }
 
   .split-hero-kicker {
@@ -1116,15 +1118,16 @@ body {
   }
 
   .split-hero-image {
-    position: absolute;
-    inset: 0 0 auto;
+    position: relative;
+    inset: auto;
+    grid-row: 1;
     width: 100%;
-    height: 62%;
+    height: auto;
     min-height: 0;
   }
 
   .split-hero-image::after {
-    height: 48%;
+    height: 38%;
   }
 
   .split-hero-number {
