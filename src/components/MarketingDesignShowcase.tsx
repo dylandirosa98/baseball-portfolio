@@ -8,7 +8,7 @@ import { ArrowRight, Palette } from "lucide-react";
 const designs = [
   {
     id: "design-1",
-    name: "Design 1",
+    name: "Cinematic",
     number: "01",
     copy: "Big image, bold name, immediate impact.",
     image: "/images/marketing-design-1.png",
@@ -16,7 +16,7 @@ const designs = [
   },
   {
     id: "design-2",
-    name: "Design 2",
+    name: "Clubhouse",
     number: "02",
     copy: "An editorial split layout with structured details.",
     image: "/images/marketing-design-2.png",
@@ -24,7 +24,7 @@ const designs = [
   },
   {
     id: "design-3",
-    name: "Design 3",
+    name: "Prospect Card",
     number: "03",
     copy: "A centered identity with a modern player-card feel.",
     image: "/images/marketing-design-3.png",
