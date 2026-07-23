@@ -73,7 +73,7 @@ export default function HeroSection({ player }: HeroSectionProps) {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
         >
-          <div className="design-one-hero-image relative w-full max-w-[440px] lg:max-w-[520px] xl:max-w-[580px] h-[95%] lg:mr-[10%] xl:mr-[15%]">
+          <div className={`design-one-hero-image relative w-full max-w-[440px] lg:max-w-[520px] xl:max-w-[580px] h-[95%] lg:mr-[10%] xl:mr-[15%]${defaultHeroImage ? " default-player-image-wrap" : ""}`}>
             <Image
               src={playerImageOrFallback(player.heroImageUrl)}
               alt={`${player.firstName} ${player.lastName}`}

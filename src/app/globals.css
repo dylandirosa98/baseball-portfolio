@@ -1816,6 +1816,13 @@ body {
     min-height: clamp(36rem, 150cqw, 40rem);
   }
 
+  /* The square fallback art needs a wider stage to avoid an empty band above the player. */
+  .profile-design-1 .design-one-hero-image.default-player-image-wrap {
+    width: min(117cqw, 520px);
+    max-width: none;
+    flex: 0 0 min(117cqw, 520px);
+  }
+
   .profile-design-2 .alternate-hero--split {
     min-height: 0;
     grid-template-rows: clamp(30rem, 138cqw, 34rem) auto;
@@ -1830,8 +1837,25 @@ body {
     min-height: clamp(50rem, 215cqw, 54rem);
   }
 
+  .profile-design-3 .card-hero-orbit--one {
+    top: 42%;
+    width: min(130cqw, 600px);
+  }
+
+  .profile-design-3 .card-hero-orbit--two {
+    top: 42%;
+    width: min(100cqw, 480px);
+  }
+
   .profile-design-3 .card-hero-image {
     inset: 3rem 0 11rem;
     width: min(100cqw, 540px);
+  }
+
+  .profile-design-3 .card-hero-image.default-player-image-wrap {
+    inset: 3rem -15cqw 11rem;
+    width: auto;
+    max-width: none;
+    margin-inline: 0;
   }
 }

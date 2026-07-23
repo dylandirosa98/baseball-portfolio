@@ -139,7 +139,7 @@ export default function AlternateHeroSection({ player, design }: AlternateHeroSe
           <div className="card-hero-orbit card-hero-orbit--one" />
           <div className="card-hero-orbit card-hero-orbit--two" />
           <motion.div
-            className="card-hero-image"
+            className={`card-hero-image${defaultHeroImage ? " default-player-image-wrap" : ""}`}
             initial={{ opacity: 0, y: 28, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.75, ease: "easeOut" }}
