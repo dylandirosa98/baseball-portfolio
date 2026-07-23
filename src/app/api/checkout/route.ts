@@ -124,7 +124,7 @@ export async function POST(request: Request) {
       line_items: lineItems,
       allow_promotion_codes: true,
       branding_settings: { display_name: "Diamond Profile" },
-      success_url: origin + "/builder?checkout=success&session_id={CHECKOUT_SESSION_ID}",
+      success_url: origin + "/dashboard?checkout=success&session_id={CHECKOUT_SESSION_ID}",
       cancel_url: origin + "/builder?checkout=canceled",
       client_reference_id: user.id,
       ...(player?.stripe_customer_id ? { customer: player.stripe_customer_id } : { customer_email: user.email || undefined }),

@@ -1867,7 +1867,6 @@ function ReviewStep({ draft, update, checkoutResult }: {
   const [domainMessage, setDomainMessage] = useState("");
   const [checkoutState, setCheckoutState] = useState<"idle" | "loading" | "error">("idle");
   const [checkoutMessage, setCheckoutMessage] = useState("");
-  const [publishedSlug, setPublishedSlug] = useState("");
 
   useEffect(() => {
     const savedTier = localStorage.getItem("diamond_builder_tier");
@@ -2018,8 +2017,7 @@ function ReviewStep({ draft, update, checkoutResult }: {
       if (!publishResponse.ok) throw new Error(publishData.error || "Your portfolio could not be published.");
 
       if (tier === "free" && !customDomain) {
-        setPublishedSlug(publishData.slug || draft.slug);
-        setCheckoutState("idle");
+        window.location.assign("/dashboard");
         return;
       }
 
@@ -2095,12 +2093,6 @@ function ReviewStep({ draft, update, checkoutResult }: {
       </section>
 
 
-      {publishedSlug && (
-        <div className="mb-5 rounded-lg border border-emerald-400/25 bg-emerald-400/10 p-3 text-sm text-emerald-100">
-          <p className="font-semibold">Your free portfolio is live</p>
-          <Link href={"/" + publishedSlug} className="mt-1 inline-flex items-center gap-1 font-semibold underline">View portfolio <ArrowRight className="h-3.5 w-3.5" /></Link>
-        </div>
-      )}
       {checkoutResult === "success" && (
         <div className="mb-5 flex gap-3 rounded-lg border border-emerald-400/25 bg-emerald-400/10 p-3 text-sm text-emerald-100">
           <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300" />
