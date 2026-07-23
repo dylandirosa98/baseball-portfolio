@@ -131,6 +131,16 @@ const steps: Step[] = [
   { id: "review", label: "Launch", caption: "Choose a plan and go live", icon: Rocket },
 ];
 
+const editorStepCopy: Record<StepId, { label: string; caption: string }> = {
+  info: { label: "Player details", caption: "Identity, team, and measurements" },
+  photos: { label: "Photos", caption: "Hero image, headshot, and logo" },
+  style: { label: "Design", caption: "Template, colors, and appearance" },
+  stats: { label: "Stats", caption: "Current season numbers" },
+  content: { label: "Story & media", caption: "Bio, skills, videos, and highlights" },
+  links: { label: "Links", caption: "Social profiles and documents" },
+  review: { label: "Publishing", caption: "Address, plan, and domain" },
+};
+
 function isStepId(value: string | null): value is StepId {
   return steps.some((step) => step.id === value);
 }
@@ -449,6 +459,7 @@ export default function BuilderPage() {
   const previewPlayer = useMemo<Player>(() => ({ ...draft, slug: draft.slug || "preview" }), [draft]);
   const completion = profileCompletion(draft);
   const editingExisting = editMode || hasCloudProfile;
+  const currentStepCopy = editingExisting ? editorStepCopy[activeStep] : currentStep;
   const liveHref = isPublished && draft.slug && draft.slug !== "preview" ? `/${draft.slug}` : null;
 
   const update = useCallback((updates: Partial<Player>) => {
@@ -557,7 +568,7 @@ export default function BuilderPage() {
                   type="button"
                   onClick={() => void saveAndReturn()}
                   disabled={leaving}
-                  className="flex h-11 items-center justify-center gap-2 rounded-lg bg-white px-3 text-sm font-bold text-black transition hover:bg-white/85 disabled:opacity-60"
+                  className="hidden h-11 items-center justify-center gap-2 rounded-lg bg-white px-3 text-sm font-bold text-black transition hover:bg-white/85 disabled:opacity-60 sm:flex"
                 >
                   {leaving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                   <span className="hidden min-[390px]:inline">Done</span>
@@ -574,32 +585,36 @@ export default function BuilderPage() {
               </Link>
             )}
 
-            <button
-              type="button"
-              onClick={() => setPreviewOpen(true)}
-              aria-label="Preview portfolio"
-              title="Preview portfolio"
-              className="flex h-11 items-center justify-center gap-2 rounded-lg border border-white/10 px-3 text-sm font-semibold text-white transition hover:bg-white/[0.06] lg:hidden"
-            >
-              <Eye className="h-4 w-4" />
-              <span className="hidden min-[390px]:inline">Preview</span>
-            </button>
+            {!editingExisting && (
+              <button
+                type="button"
+                onClick={() => setPreviewOpen(true)}
+                aria-label="Preview portfolio"
+                title="Preview portfolio"
+                className="flex h-11 items-center justify-center gap-2 rounded-lg border border-white/10 px-3 text-sm font-semibold text-white transition hover:bg-white/[0.06] lg:hidden"
+              >
+                <Eye className="h-4 w-4" />
+                <span className="hidden min-[390px]:inline">Preview</span>
+              </button>
+            )}
           </div>
         </header>
 
-        <nav className="border-t border-white/[0.06] px-3 py-2 lg:hidden" aria-label="Builder steps">
+        <nav className="border-t border-white/[0.06] px-3 py-2 lg:hidden" aria-label={editingExisting ? "Editor sections" : "Builder steps"}>
           <div className="mx-auto mb-2 flex max-w-xl items-center gap-3">
             <span className="min-w-0 flex-1 truncate text-xs font-semibold text-white/75">
-              {activeIndex + 1} of {steps.length}: {currentStep.label}
+              {editingExisting ? currentStepCopy.label : `${activeIndex + 1} of ${steps.length}: ${currentStep.label}`}
             </span>
-            <span className="text-[11px] text-white/35">{completion}% ready</span>
+            <span className="text-[11px] text-white/35">{editingExisting ? "Select a section" : `${completion}% ready`}</span>
           </div>
-          <div className="mx-auto mb-2 h-1 max-w-xl overflow-hidden rounded-full bg-white/10">
-            <div
-              className="h-full rounded-full bg-red-500 transition-[width] duration-300"
-              style={{ width: `${((activeIndex + 1) / steps.length) * 100}%` }}
-            />
-          </div>
+          {!editingExisting && (
+            <div className="mx-auto mb-2 h-1 max-w-xl overflow-hidden rounded-full bg-white/10">
+              <div
+                className="h-full rounded-full bg-red-500 transition-[width] duration-300"
+                style={{ width: `${((activeIndex + 1) / steps.length) * 100}%` }}
+              />
+            </div>
+          )}
           <div className="mx-auto grid max-w-xl grid-cols-7 gap-1">
             {steps.map((step, index) => {
               const Icon = step.icon;
@@ -619,7 +634,7 @@ export default function BuilderPage() {
                       : "text-white/35 hover:bg-white/[0.06] hover:text-white"
                   }`}
                 >
-                  {ready && !active && index < activeIndex ? (
+                  {!editingExisting && ready && !active && index < activeIndex ? (
                     <Check className="h-4 w-4 text-emerald-400" />
                   ) : (
                     <Icon className="h-4 w-4" />
@@ -633,23 +648,20 @@ export default function BuilderPage() {
 
       <div className="mx-auto grid max-w-[1480px] gap-5 px-3 py-4 sm:px-4 lg:grid-cols-[410px_minmax(0,1fr)] lg:py-5">
         {editingExisting && (
-          <section className="flex flex-col justify-between gap-4 rounded-lg border border-red-500/20 bg-[linear-gradient(110deg,rgba(229,22,42,.13),rgba(255,255,255,.025))] p-4 sm:flex-row sm:items-center lg:col-span-2">
+          <section className="hidden items-center justify-between gap-4 rounded-lg border border-white/10 bg-white/[0.025] px-4 py-3 lg:col-span-2 lg:flex">
             <div className="flex min-w-0 items-start gap-3">
               <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${isPublished ? "bg-emerald-400" : "bg-amber-300"}`} />
               <div className="min-w-0">
-                <p className="font-bold">{isPublished ? "Editing your live website" : "Editing your saved draft"}</p>
-                <p className="mt-1 text-xs leading-5 text-white/40">Make one change or update the full profile. Autosave keeps this connected to your dashboard.</p>
+                <p className="text-sm font-bold">{isPublished ? "Live website" : "Unpublished draft"}</p>
+                <p className="mt-0.5 text-xs text-white/35">Changes autosave to your account.</p>
               </div>
             </div>
-            <div className="flex shrink-0 flex-wrap gap-2">
+            <div className="flex shrink-0 items-center gap-2">
               {liveHref && (
                 <Link href={liveHref} target="_blank" className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-white/10 px-3 text-xs font-bold text-white/65 hover:bg-white/5 hover:text-white">
                   View live site <ExternalLink className="h-3.5 w-3.5" />
                 </Link>
               )}
-              <button type="button" onClick={() => void saveAndReturn()} disabled={leaving} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-white px-3 text-xs font-bold text-black disabled:opacity-60">
-                Save & return <LayoutDashboard className="h-3.5 w-3.5" />
-              </button>
             </div>
           </section>
         )}
@@ -659,18 +671,21 @@ export default function BuilderPage() {
           </div>
         )}
         <aside className="min-w-0 space-y-4">
-          <nav className="hidden rounded-lg border border-white/10 bg-white/[0.025] p-2 lg:block" aria-label="Builder steps">
+          <nav className="hidden rounded-lg border border-white/10 bg-white/[0.025] p-2 lg:block" aria-label={editingExisting ? "Editor sections" : "Builder steps"}>
             <div className="mb-2 flex items-center justify-between px-2 py-1.5">
-              <span className="text-xs font-semibold text-white/55">Your progress</span>
-              <span className="text-xs font-semibold text-white/35">{completion}% ready</span>
+              <span className="text-xs font-semibold text-white/55">{editingExisting ? "Edit site sections" : "Your progress"}</span>
+              {!editingExisting && <span className="text-xs font-semibold text-white/35">{completion}% ready</span>}
             </div>
-            <div className="mb-2 h-1 overflow-hidden rounded-full bg-white/10">
-              <div className="h-full rounded-full bg-red-500 transition-[width] duration-300" style={{ width: `${completion}%` }} />
-            </div>
+            {!editingExisting && (
+              <div className="mb-2 h-1 overflow-hidden rounded-full bg-white/10">
+                <div className="h-full rounded-full bg-red-500 transition-[width] duration-300" style={{ width: `${completion}%` }} />
+              </div>
+            )}
             {steps.map((step, index) => {
               const Icon = step.icon;
               const active = step.id === activeStep;
               const ready = stepIsReady(step.id, draft);
+              const copy = editingExisting ? editorStepCopy[step.id] : step;
               return (
                 <button
                   key={step.id}
@@ -684,16 +699,16 @@ export default function BuilderPage() {
                   <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
                     active ? "bg-black text-white" : "bg-white/[0.06] text-white/45"
                   }`}>
-                    {ready && !active && index < activeIndex ? (
+                    {!editingExisting && ready && !active && index < activeIndex ? (
                       <Check className="h-4 w-4 text-emerald-400" />
                     ) : (
                       <Icon className="h-4 w-4" />
                     )}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-semibold">{step.label}</span>
+                    <span className="block text-sm font-semibold">{copy.label}</span>
                     <span className={`block truncate text-xs ${active ? "text-black/55" : "text-white/30"}`}>
-                      {step.caption}
+                      {copy.caption}
                     </span>
                   </span>
                 </button>
@@ -708,7 +723,20 @@ export default function BuilderPage() {
               update={update}
               checkoutResult={checkoutResult}
               isPublished={isPublished}
+              editing={editingExisting}
             />
+            {editingExisting ? (
+              <div className="mt-6 hidden items-center justify-end gap-2 border-t border-white/10 pt-4 lg:flex">
+                <button type="button" onClick={() => void saveNow()} disabled={saveState === "saving" || !dirty} className={buttonClass}>
+                  {saveState === "saving" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  Save changes
+                </button>
+                <button type="button" onClick={() => void saveAndReturn()} disabled={leaving} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-white px-4 text-sm font-bold text-black transition hover:bg-white/85 disabled:opacity-60">
+                  {leaving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                  Done
+                </button>
+              </div>
+            ) : (
             <div className="mt-6 hidden items-center justify-between gap-3 border-t border-white/10 pt-4 lg:flex">
               <button type="button" onClick={previousStep} disabled={activeIndex === 0} className={buttonClass}>
                 <ArrowLeft className="h-4 w-4" />
@@ -730,6 +758,7 @@ export default function BuilderPage() {
                 </button>
               )}
             </div>
+            )}
           </section>
         </aside>
 
@@ -771,6 +800,19 @@ export default function BuilderPage() {
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#0b0b0b]/95 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl lg:hidden">
+        {editingExisting ? (
+          <div className="mx-auto flex max-w-xl gap-2">
+            <button type="button" onClick={() => setPreviewOpen(true)} className="inline-flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg border border-white/10 px-3 text-sm font-semibold text-white/75">
+              <Eye className="h-4 w-4" /> Preview
+            </button>
+            <button type="button" onClick={() => void saveNow()} disabled={saveState === "saving" || !dirty} className="inline-flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg border border-white/10 px-3 text-sm font-semibold text-white/75 disabled:opacity-35">
+              {saveState === "saving" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
+            </button>
+            <button type="button" onClick={() => void saveAndReturn()} disabled={leaving} className="inline-flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg bg-white px-4 text-sm font-bold text-black disabled:opacity-60">
+              {leaving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />} Done
+            </button>
+          </div>
+        ) : (
         <div className="mx-auto flex max-w-xl gap-2">
           <button
             type="button"
@@ -799,6 +841,7 @@ export default function BuilderPage() {
             <ArrowRight className="h-4 w-4 shrink-0" />
           </button>
         </div>
+        )}
       </div>
 
       {previewOpen && (
@@ -827,14 +870,14 @@ export default function BuilderPage() {
   );
 }
 
-function StepEditor({ draft, step, update, checkoutResult, isPublished }: { draft: Player; step: StepId; update: (updates: Partial<Player>) => void; checkoutResult: "success" | "canceled" | null; isPublished: boolean }) {
-  if (step === "info") return <InfoStep draft={draft} update={update} />;
-  if (step === "photos") return <PhotosStep draft={draft} update={update} />;
-  if (step === "style") return <StyleStep draft={draft} update={update} />;
-  if (step === "stats") return <StatsStep draft={draft} update={update} />;
-  if (step === "content") return <ContentStep draft={draft} update={update} />;
-  if (step === "links") return <LinksStep draft={draft} update={update} />;
-  return <ReviewStep draft={draft} update={update} checkoutResult={checkoutResult} isPublished={isPublished} />;
+function StepEditor({ draft, step, update, checkoutResult, isPublished, editing }: { draft: Player; step: StepId; update: (updates: Partial<Player>) => void; checkoutResult: "success" | "canceled" | null; isPublished: boolean; editing: boolean }) {
+  if (step === "info") return <InfoStep draft={draft} update={update} editing={editing} />;
+  if (step === "photos") return <PhotosStep draft={draft} update={update} editing={editing} />;
+  if (step === "style") return <StyleStep draft={draft} update={update} editing={editing} />;
+  if (step === "stats") return <StatsStep draft={draft} update={update} editing={editing} />;
+  if (step === "content") return <ContentStep draft={draft} update={update} editing={editing} />;
+  if (step === "links") return <LinksStep draft={draft} update={update} editing={editing} />;
+  return <ReviewStep draft={draft} update={update} checkoutResult={checkoutResult} isPublished={isPublished} editing={editing} />;
 }
 
 function SectionHeader({ title, body }: { title: string; body: string }) {
@@ -890,12 +933,15 @@ function Toggle({
   );
 }
 
-function InfoStep({ draft, update }: { draft: Player; update: (updates: Partial<Player>) => void }) {
+function InfoStep({ draft, update, editing }: { draft: Player; update: (updates: Partial<Player>) => void; editing: boolean }) {
   const positions = ["Pitcher", "Catcher", "First Base", "Second Base", "Third Base", "Shortstop", "Left Field", "Center Field", "Right Field", "Utility"];
 
   return (
     <div>
-      <SectionHeader title="Player basics" body="Start with the details a coach needs to recognize the player." />
+      <SectionHeader
+        title={editing ? "Player details" : "Player basics"}
+        body={editing ? "Update the information shown throughout the live profile." : "Start with the details a coach needs to recognize the player."}
+      />
       <div className="grid grid-cols-2 gap-3">
         <Field label="First name">
           <input
@@ -1061,12 +1107,15 @@ function InfoStep({ draft, update }: { draft: Player; update: (updates: Partial<
   );
 }
 
-function PhotosStep({ draft, update }: { draft: Player; update: (updates: Partial<Player>) => void }) {
+function PhotosStep({ draft, update, editing }: { draft: Player; update: (updates: Partial<Player>) => void; editing: boolean }) {
   const uploadSlug = uploadSlugFor(draft);
 
   return (
     <div>
-      <SectionHeader title="Add your photos" body="Strong images make the biggest difference. You can replace any photo later." />
+      <SectionHeader
+        title={editing ? "Profile photos" : "Add your photos"}
+        body={editing ? "Replace the hero image, headshot, or team logo shown on the profile." : "Strong images make the biggest difference. You can replace any photo later."}
+      />
       <div className="divide-y divide-white/10 border-y border-white/10">
         <div className="py-5">
           <div className="flex items-center justify-between gap-3">
@@ -1165,18 +1214,21 @@ function ColorField({
   );
 }
 
-function StyleStep({ draft, update }: { draft: Player; update: (updates: Partial<Player>) => void }) {
+function StyleStep({ draft, update, editing }: { draft: Player; update: (updates: Partial<Player>) => void; editing: boolean }) {
   return (
     <div>
-      <SectionHeader title="Make it feel personal" body="Pick a team color and the page appearance. The preview updates instantly." />
+      <SectionHeader
+        title={editing ? "Site design" : "Make it feel personal"}
+        body={editing ? "Change the template, colors, image scale, or appearance. The preview updates instantly." : "Pick a team color and the page appearance. The preview updates instantly."}
+      />
       <div className="space-y-5">
         <fieldset>
           <legend className={labelClass}>Portfolio design</legend>
           <div className="space-y-2">
             {([
-              { id: "design-1", label: "Design 1", description: "Cinematic" },
-              { id: "design-2", label: "Design 2", description: "Clubhouse" },
-              { id: "design-3", label: "Design 3", description: "Prospect card" },
+              { id: "design-1", label: "Cinematic", description: "Bold, immersive player introduction" },
+              { id: "design-2", label: "Clubhouse", description: "Editorial team-focused layout" },
+              { id: "design-3", label: "Prospect Card", description: "Modern recruiting profile" },
             ] as { id: PlayerDesign; label: string; description: string }[]).map((option) => {
               const active = (draft.design || "design-1") === option.id;
               return (
@@ -1274,12 +1326,15 @@ function StyleStep({ draft, update }: { draft: Player; update: (updates: Partial
   );
 }
 
-function StatsStep({ draft, update }: { draft: Player; update: (updates: Partial<Player>) => void }) {
+function StatsStep({ draft, update, editing }: { draft: Player; update: (updates: Partial<Player>) => void; editing: boolean }) {
   const fields = draft.position === "Pitcher" ? pitcherStats : hitterStats;
 
   return (
     <div>
-      <SectionHeader title="Current season stats" body="Add what you have now or skip this step and return later." />
+      <SectionHeader
+        title={editing ? "Season stats" : "Current season stats"}
+        body={editing ? "Update the numbers shown on the profile, or hide them while they are incomplete." : "Add what you have now or skip this step and return later."}
+      />
       <div className="grid grid-cols-2 gap-3">
         {fields.map(([key, label]) => (
           <Field key={key} label={label}>
@@ -1324,7 +1379,7 @@ const contentTabs: { id: ContentPanel; label: string }[] = [
   { id: "interests", label: "Off the Field" },
 ];
 
-function ContentStep({ draft, update }: { draft: Player; update: (updates: Partial<Player>) => void }) {
+function ContentStep({ draft, update, editing }: { draft: Player; update: (updates: Partial<Player>) => void; editing: boolean }) {
   const [activePanel, setActivePanel] = useState<ContentPanel>("skills");
   const contentTabsRef = useRef<HTMLDivElement>(null);
   const [indexes, setIndexes] = useState<ContentIndexes>({
@@ -1352,7 +1407,10 @@ function ContentStep({ draft, update }: { draft: Player; update: (updates: Parti
 
   return (
     <div>
-      <SectionHeader title="Build the story" body="Start with the skill cards and add only the sections that help tell the player\'s story." />
+      <SectionHeader
+        title={editing ? "Story & media" : "Build the story"}
+        body={editing ? "Manage the bio, skills, photos, videos, highlights, and off-field content." : "Start with the skill cards and add only the sections that help tell the player's story."}
+      />
       <div className="mb-5">
         <div className="mb-2 flex items-center justify-end gap-2">
           <span className="mr-1 text-[11px] font-medium text-white/40">Scroll sections</span>
@@ -1808,10 +1866,10 @@ function TrainingContentEditor({ draft, index, uploadSlug, onIndex, onChange, up
 function InterestsContentEditor({ draft, index, uploadSlug, onIndex, onChange, update }: { draft: Player; index: number; uploadSlug: string; onIndex: (index: number) => void; onChange: (items: MediaItem[]) => void; update: (updates: Partial<Player>) => void }) {
   return (
     <div className="space-y-4">
-      <SectionHeader title="Outside the Rink" body="Add the section text, then edit one media slide at a time." />
+      <SectionHeader title="Off the Field" body="Add the section text, then edit one media slide at a time." />
       <Field label="Section Text"><textarea className={inputClass} rows={4} value={draft.interests ?? ""} onChange={(e) => update({ interests: e.target.value })} /></Field>
       <MediaContentEditor
-        title="Outside the Rink Media"
+        title="Off the Field Media"
         body="Photos and videos for life away from baseball."
         items={draft.interestsMedia ?? []}
         index={index}
@@ -1919,12 +1977,15 @@ function MediaItemFields({
   );
 }
 
-function LinksStep({ draft, update }: { draft: Player; update: (updates: Partial<Player>) => void }) {
+function LinksStep({ draft, update, editing }: { draft: Player; update: (updates: Partial<Player>) => void; editing: boolean }) {
   const links = draft.socialLinks;
 
   return (
     <div>
-      <SectionHeader title="Add useful links" body="Bring social profiles, recruiting pages, and documents into one place." />
+      <SectionHeader
+        title={editing ? "Links & documents" : "Add useful links"}
+        body={editing ? "Update social profiles, recruiting pages, resume, and transcript." : "Bring social profiles, recruiting pages, and documents into one place."}
+      />
 
       <div className="space-y-4 border-y border-white/10 py-5">
         <div>
@@ -2064,11 +2125,12 @@ function suggestedDomain(draft: Player) {
   return name ? name + ".com" : "";
 }
 
-function ReviewStep({ draft, update, checkoutResult, isPublished }: {
+function ReviewStep({ draft, update, checkoutResult, isPublished, editing }: {
   draft: Player;
   update: (updates: Partial<Player>) => void;
   checkoutResult: "success" | "canceled" | null;
   isPublished: boolean;
+  editing: boolean;
 }) {
   const cloudDraft = draft as Player & Partial<PlayerWithMeta>;
   const currentTier = cloudDraft.billingTier === "pro" || cloudDraft.billingTier === "elite" ? cloudDraft.billingTier : "free";
@@ -2276,8 +2338,8 @@ function ReviewStep({ draft, update, checkoutResult, isPublished }: {
   return (
     <div>
       <SectionHeader
-        title={isPublished ? "Publishing & plans" : "Publish your portfolio"}
-        body={isPublished ? "Your website is live. Keep the current plan, save profile changes, or add services when you need them." : "Start free, then add professional video, analytics, or a managed custom domain whenever you need them."}
+        title={editing ? "Publishing" : isPublished ? "Publishing & plans" : "Publish your portfolio"}
+        body={isPublished ? "Your website is live. Keep the current plan, save profile changes, or add services when you need them." : editing ? "Choose the public address and plan when you are ready to publish this draft." : "Start free, then add professional video, analytics, or a managed custom domain whenever you need them."}
       />
 
       <section className="mb-6 rounded-lg border border-white/10 bg-white/[0.02] p-4">
