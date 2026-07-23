@@ -13,6 +13,8 @@ A mobile-first builder for baseball players and families to create a polished re
 - Independent $10/month managed custom-domain add-on
 - Signed, idempotent Stripe webhooks and Stripe Customer Portal billing management
 - Automated standard-price .com search, purchase, renewal, and Vercel project connection
+- Authenticated player dashboard for site management, billing, usage, domain status, and paid analytics
+- Allowlisted, read-only admin dashboard for MRR, revenue, churn, users, plans, domains, video, and engagement
 - Landscape and vertical Remotion marketing-video compositions
 - A new baseball-focused marketing and pricing homepage
 
@@ -25,6 +27,10 @@ npm run dev
 ```
 
 Open `http://localhost:3000`. The builder is at `/builder`.
+
+Signed-in players manage their portfolio at `/dashboard`. The legacy `/account`
+address redirects there. Add one or more comma-separated owner emails to
+`ADMIN_EMAILS` to allow access to the read-only `/admin` dashboard.
 
 ## Supabase
 
@@ -65,7 +71,7 @@ Enable the Stripe Customer Portal for subscription cancellation and plan managem
 
 ## Production
 
-Use `.env.production.example` as the Vercel Production environment checklist. Managed domains require the Vercel project identifier, registrar contact fields, and a maximum purchase-price ceiling. Apply every migration before deploying:
+Use `.env.production.example` as the Vercel Production environment checklist. Managed domains require the Vercel project identifier, registrar contact fields, a random `CRON_SECRET` of at least 16 characters, and a maximum purchase-price ceiling. Domain add-on activation creates a tracked registrar order, attaches it after Vercel confirms ownership, and enables renewal; cancellation disables renewal. A secured daily reconciliation job safely finishes any asynchronous registrar orders and works on every Vercel plan. Apply every migration before deploying:
 
 ```bash
 npx supabase db push

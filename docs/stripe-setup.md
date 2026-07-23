@@ -49,6 +49,12 @@ The live webhook endpoint is enabled at `https://diamondprofile.app/api/stripe/w
 
 Add every value from `.env.production.example` to the Vercel Production environment, including the live webhook signing secret, then redeploy.
 
+## Managed-domain fulfillment
+
+Domain purchase, ownership, project attachment, and renewal use Vercel's current Registrar API. Add the Vercel token, team and project identifiers, Diamond Profile registrant contact, the purchase-price ceiling, and a random `CRON_SECRET` of at least 16 characters from `.env.production.example`.
+
+Purchases are tracked by Vercel order ID because registration can finish asynchronously. The Stripe checkout event starts the order, and the secured `/api/domains/reconcile` cron route completes pending ownership and project attachment. `vercel.json` schedules a portable daily safety reconciliation; successful standard registrations can still complete during the initial checkout webhook. Canceling the domain add-on disables registrar auto-renewal, and reactivation enables it again.
+
 ## Database
 
 All migrations through `20260723010000_managed_domain_status.sql` are applied to the linked project. They include billing state, analytics, slug availability, hosted-video ownership, and managed-domain fulfillment status.

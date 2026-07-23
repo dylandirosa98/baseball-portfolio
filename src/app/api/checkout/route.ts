@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getAppUrl, getStripe, isEntitled } from "@/lib/stripe";
+import { isStandardComDomain, normalizeManagedDomain } from "@/lib/domain-name";
+import { getDomainAvailability, getDomainPrice, maximumDomainPrice } from "@/lib/vercel-domains";
 
 
 function metadataValue(value: unknown, maxLength = 200) {
@@ -36,13 +39,37 @@ export async function POST(request: Request) {
 
   const { data: player } = await supabase
     .from("players")
-    .select("stripe_customer_id")
+    .select("stripe_customer_id, custom_domain")
     .eq("user_id", user.id)
     .maybeSingle();
+  if (!player) return NextResponse.json({ error: "Save your portfolio before starting checkout." }, { status: 409 });
 
-  const domain = wantsCustomDomain ? metadataValue(body.domain, 253) : "";
-  if (wantsCustomDomain && !/^(?!-)[a-z0-9-]+\.com$/.test(domain)) {
+  const domain = wantsCustomDomain ? normalizeManagedDomain(metadataValue(body.domain, 253)) : "";
+  if (wantsCustomDomain && !isStandardComDomain(domain)) {
     return NextResponse.json({ error: "Choose an available standard .com domain before checkout." }, { status: 400 });
+  }
+  if (wantsCustomDomain && domain !== player.custom_domain) {
+    try {
+      const { data: claimed, error: claimedError } = await createAdminClient()
+        .from("players")
+        .select("user_id")
+        .eq("custom_domain", domain)
+        .maybeSingle();
+      if (claimedError) throw claimedError;
+      if (claimed && claimed.user_id !== user.id) {
+        return NextResponse.json({ error: "That domain is no longer available. Choose another one." }, { status: 409 });
+      }
+      if (!(await getDomainAvailability(domain))) {
+        return NextResponse.json({ error: "That domain is no longer available. Choose another one." }, { status: 409 });
+      }
+      const domainPrice = await getDomainPrice(domain);
+      if (domainPrice.purchasePrice > maximumDomainPrice()) {
+        return NextResponse.json({ error: "That domain is not standard-priced. Choose another .com." }, { status: 409 });
+      }
+    } catch (domainError) {
+      console.error("Pre-checkout domain verification failed", domainError);
+      return NextResponse.json({ error: "Domain verification is temporarily unavailable. Try again shortly." }, { status: 502 });
+    }
   }
 
   const stripe = getStripe();

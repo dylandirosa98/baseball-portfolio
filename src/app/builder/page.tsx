@@ -40,6 +40,7 @@ import MediaVideoUpload from "@/components/admin/MediaVideoUpload";
 import type { Highlight, MediaItem, Player, PlayerDesign, PlayerStats, PlayerWithMeta, Skillset, SocialLink } from "@/lib/types";
 import { DEFAULT_PLAYER_IMAGE, normalizedHeroImageScale } from "@/lib/player-image";
 import { PROFILE_DOMAIN, normalizeProfileSlug, profileSlugError, sanitizeProfileSlugInput } from "@/lib/slug";
+import { isStandardComDomain, normalizeManagedDomain } from "@/lib/domain-name";
 
 const STORAGE_KEY = "diamond_builder_draft_v1";
 const ACTIVE_STEP_KEY = "diamond_builder_active_step_v1";
@@ -1848,11 +1849,6 @@ function suggestedDomain(draft: Player) {
   return name ? name + ".com" : "";
 }
 
-function normalizeDomain(value: string) {
-  const domain = value.trim().toLowerCase().replace(/^https?:\/\//, "").split("/")[0];
-  return domain.includes(".") ? domain : domain + ".com";
-}
-
 function ReviewStep({ draft, update, checkoutResult }: {
   draft: Player;
   update: (updates: Partial<Player>) => void;
@@ -1951,8 +1947,8 @@ function ReviewStep({ draft, update, checkoutResult }: {
 
   async function searchDomain(event: React.FormEvent) {
     event.preventDefault();
-    const domain = normalizeDomain(domainInput);
-    if (!/^(?!-)[a-z0-9-]+\.com$/.test(domain)) {
+    const domain = normalizeManagedDomain(domainInput);
+    if (!isStandardComDomain(domain)) {
       setDomainState("error");
       setDomainMessage("The included offer supports standard .com domains, such as alexmorgan.com.");
       return;

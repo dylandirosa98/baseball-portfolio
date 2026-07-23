@@ -5,9 +5,39 @@ type DomainPrice = {
   renewalPrice: number;
 };
 
+type DomainAvailability = {
+  available: boolean;
+};
+
 type BuyDomainResult = {
   orderId?: string;
 };
+
+type DomainOrderResult = {
+  orderId: string;
+  status: "draft" | "purchasing" | "completed" | "failed";
+  domains: Array<{
+    domainName: string;
+    status: "pending" | "completed" | "failed" | "refunded" | "refund-failed";
+    price: number;
+    error?: { code?: string };
+  }>;
+  error?: { code?: string };
+};
+
+class VercelApiError extends Error {
+  constructor(message: string, readonly code?: string) {
+    super(message);
+    this.name = "VercelApiError";
+  }
+}
+
+export class ManagedDomainOrderFailedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ManagedDomainOrderFailedError";
+  }
+}
 
 function configuration() {
   const token = process.env.VERCEL_API_TOKEN;
@@ -34,8 +64,17 @@ async function vercelRequest<T>(path: string, init: RequestInit = {}, allowNotFo
     cache: "no-store",
   });
   if (allowNotFound && response.status === 404) return null;
-  const result = await response.json().catch(() => ({})) as T & { error?: { message?: string }; message?: string };
-  if (!response.ok) throw new Error(result.error?.message || result.message || `Vercel request failed (${response.status}).`);
+  const result = await response.json().catch(() => ({})) as T & {
+    code?: string;
+    error?: { code?: string; message?: string };
+    message?: string;
+  };
+  if (!response.ok) {
+    throw new VercelApiError(
+      result.error?.message || result.message || `Vercel request failed (${response.status}).`,
+      result.error?.code || result.code,
+    );
+  }
   return result;
 }
 
@@ -72,6 +111,14 @@ export async function getDomainPrice(domain: string) {
   return price;
 }
 
+export async function getDomainAvailability(domain: string) {
+  const result = await vercelRequest<DomainAvailability>(
+    `/v1/registrar/domains/${encodeURIComponent(domain)}/availability`,
+  );
+  if (!result || typeof result.available !== "boolean") throw new Error("Vercel did not return domain availability.");
+  return result.available;
+}
+
 async function isAttached(domain: string) {
   const { project } = configuration();
   return Boolean(await vercelRequest(
@@ -93,40 +140,80 @@ async function attachDomain(domain: string) {
   });
 }
 
-export async function provisionManagedDomain(domain: string) {
-  if (await isAttached(domain)) return { orderId: null, purchasePrice: null };
-
-  let orderId: string | null = null;
-  let purchasePrice: number | null = null;
-  if (!(await isOwned(domain))) {
-    const price = await getDomainPrice(domain);
-    if (price.purchasePrice > maximumDomainPrice()) {
-      throw new Error(`The domain costs $${price.purchasePrice}, above the managed-domain purchase limit.`);
-    }
-    const purchase = await vercelRequest<BuyDomainResult>(
-      `/v1/registrar/domains/${encodeURIComponent(domain)}/buy`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          autoRenew: true,
-          years: 1,
-          expectedPrice: price.purchasePrice,
-          contactInformation: registrant(),
-        }),
-      },
+async function setManagedDomainRenewal(domain: string, autoRenew: boolean) {
+  try {
+    await vercelRequest(`/v1/registrar/domains/${encodeURIComponent(domain)}/auto-renew`, {
+      method: "PATCH",
+      body: JSON.stringify({ autoRenew }),
+    });
+  } catch (error) {
+    const alreadyInRequestedState = error instanceof VercelApiError && (
+      (autoRenew && error.code === "domain_already_renewing")
+      || (!autoRenew && ["domain_already_not_renewing", "domain_not_renewing"].includes(error.code || ""))
     );
-    orderId = purchase?.orderId || null;
-    purchasePrice = price.purchasePrice;
+    if (!alreadyInRequestedState) throw error;
+  }
+}
+
+export async function provisionManagedDomain(domain: string, existingOrderId?: string | null) {
+  const attached = await isAttached(domain);
+  const owned = await isOwned(domain);
+  if (owned) {
+    await setManagedDomainRenewal(domain, true);
+    if (!attached) await attachDomain(domain);
+    return { status: "active" as const, orderId: existingOrderId || null, purchasePrice: null };
   }
 
-  await attachDomain(domain);
-  return { orderId, purchasePrice };
+  if (existingOrderId) {
+    const order = await vercelRequest<DomainOrderResult>(
+      `/v1/registrar/orders/${encodeURIComponent(existingOrderId)}`,
+    );
+    const domainOrder = order?.domains.find((item) => item.domainName.toLowerCase() === domain);
+    if (!order || !domainOrder) throw new Error("Vercel did not return the domain purchase in its order.");
+    const terminalFailure = order.status === "failed" || ["failed", "refunded", "refund-failed"].includes(domainOrder.status);
+    if (terminalFailure) {
+      const code = domainOrder.error?.code || order.error?.code;
+      throw new ManagedDomainOrderFailedError(`Vercel domain order failed${code ? ` (${code})` : ""}.`);
+    }
+    if (order.status !== "completed" || domainOrder.status !== "completed" || !(await isOwned(domain))) {
+      return { status: "purchasing" as const, orderId: existingOrderId, purchasePrice: domainOrder.price };
+    }
+    await setManagedDomainRenewal(domain, true);
+    await attachDomain(domain);
+    return { status: "active" as const, orderId: existingOrderId, purchasePrice: domainOrder.price };
+  }
+
+  const price = await getDomainPrice(domain);
+  if (price.purchasePrice > maximumDomainPrice()) {
+    throw new ManagedDomainOrderFailedError(`The domain costs $${price.purchasePrice}, above the managed-domain purchase limit.`);
+  }
+  const purchase = await vercelRequest<BuyDomainResult>(
+    `/v1/registrar/domains/${encodeURIComponent(domain)}/buy`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        autoRenew: true,
+        years: 1,
+        expectedPrice: price.purchasePrice,
+        contactInformation: registrant(),
+      }),
+    },
+  );
+  if (!purchase?.orderId) throw new Error("Vercel accepted the purchase but did not return an order ID.");
+  console.info("Managed domain order created", { domain, orderId: purchase.orderId });
+  try {
+    if (await isOwned(domain)) {
+      await setManagedDomainRenewal(domain, true);
+      await attachDomain(domain);
+      return { status: "active" as const, orderId: purchase.orderId, purchasePrice: price.purchasePrice };
+    }
+  } catch (activationError) {
+    console.warn("Managed domain order is awaiting reconciliation", { domain, orderId: purchase.orderId, activationError });
+  }
+  return { status: "purchasing" as const, orderId: purchase.orderId, purchasePrice: price.purchasePrice };
 }
 
 export async function disableManagedDomainRenewal(domain: string) {
   if (!(await isOwned(domain))) return;
-  await vercelRequest(`/v1/registrar/domains/${encodeURIComponent(domain)}/auto-renew`, {
-    method: "PATCH",
-    body: JSON.stringify({ autoRenew: false }),
-  });
+  await setManagedDomainRenewal(domain, false);
 }

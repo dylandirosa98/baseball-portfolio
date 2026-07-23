@@ -11,7 +11,7 @@ function objectId(value: string | { id: string } | null) {
   return typeof value === "string" ? value : value?.id || null;
 }
 
-async function reconcileCustomer(subscription: Stripe.Subscription, eventCreated: number) {
+async function reconcileCustomer(subscription: Stripe.Subscription, eventCreated: number, provisionDomain = false, eventId = "") {
   const customerId = objectId(subscription.customer);
   if (!customerId) throw new Error("Subscription " + subscription.id + " has no customer.");
 
@@ -42,12 +42,16 @@ async function reconcileCustomer(subscription: Stripe.Subscription, eventCreated
     || subscription.status;
 
   const admin = createAdminClient();
-  const { data: existingPlayer } = await admin
+  const { data: existingPlayer, error: existingPlayerError } = await admin
     .from("players")
-    .select("custom_domain, custom_domain_status")
+    .select("custom_domain, custom_domain_status, custom_domain_order_id, custom_domain_purchase_price")
     .eq("user_id", userId)
     .maybeSingle();
+  if (existingPlayerError) throw existingPlayerError;
+  if (!existingPlayer) throw new Error("No player portfolio exists for Stripe user " + userId + ".");
   const requestedDomain = domainSubscription?.metadata.requested_domain || subscription.metadata.requested_domain || null;
+  if (hasCustomDomain && !requestedDomain) throw new Error("The custom-domain subscription has no requested_domain metadata.");
+  const sameDomain = Boolean(requestedDomain && requestedDomain === existingPlayer?.custom_domain);
 
   const { data: updatedPlayer, error } = await admin.from("players").update({
     billing_tier: tier,
@@ -64,28 +68,49 @@ async function reconcileCustomer(subscription: Stripe.Subscription, eventCreated
     has_custom_domain: hasCustomDomain,
     custom_domain: hasCustomDomain ? requestedDomain : existingPlayer?.custom_domain || null,
     custom_domain_status: hasCustomDomain
-      ? existingPlayer?.custom_domain_status === "active" ? "active" : "purchasing"
+      ? sameDomain && existingPlayer?.custom_domain_status === "active" ? "active" : "purchasing"
       : existingPlayer?.custom_domain ? "canceled" : "none",
+    ...(hasCustomDomain && requestedDomain && !sameDomain ? {
+      custom_domain_order_id: null,
+      custom_domain_purchase_price: null,
+      custom_domain_error: null,
+    } : {}),
   }).eq("user_id", userId).lte("stripe_event_created_at", eventCreated).select("user_id").maybeSingle();
   if (error) throw error;
   if (!updatedPlayer) return;
 
-  if (hasCustomDomain && requestedDomain && existingPlayer?.custom_domain_status !== "active") {
+  const alreadyActive = sameDomain && existingPlayer?.custom_domain_status === "active";
+  if (hasCustomDomain && requestedDomain && !alreadyActive && provisionDomain) {
+    let orderId = sameDomain ? existingPlayer?.custom_domain_order_id : null;
+    if (!orderId) {
+      const claimId = `initiating:${eventId || crypto.randomUUID()}`;
+      const { data: claimed } = await admin.from("players").update({ custom_domain_order_id: claimId })
+        .eq("user_id", userId)
+        .eq("custom_domain", requestedDomain)
+        .eq("custom_domain_status", "purchasing")
+        .is("custom_domain_order_id", null)
+        .select("user_id")
+        .maybeSingle();
+      if (!claimed) return;
+      orderId = null;
+    } else if (orderId.startsWith("initiating:")) {
+      return;
+    }
     try {
-      const provisioned = await provisionManagedDomain(requestedDomain);
+      const provisioned = await provisionManagedDomain(requestedDomain, orderId);
       const { error: domainError } = await admin.from("players").update({
-        custom_domain_status: "active",
+        custom_domain_status: provisioned.status,
         custom_domain_order_id: provisioned.orderId,
-        custom_domain_purchase_price: provisioned.purchasePrice,
+        custom_domain_purchase_price: provisioned.purchasePrice ?? existingPlayer?.custom_domain_purchase_price ?? null,
         custom_domain_error: null,
-      }).eq("user_id", userId);
+      }).eq("user_id", userId).eq("custom_domain", requestedDomain);
       if (domainError) throw domainError;
     } catch (domainError) {
       const message = domainError instanceof Error ? domainError.message : "Domain provisioning failed.";
       await admin.from("players").update({
         custom_domain_status: "failed",
         custom_domain_error: message.slice(0, 1000),
-      }).eq("user_id", userId);
+      }).eq("user_id", userId).eq("custom_domain", requestedDomain);
       throw domainError;
     }
   } else if (!hasCustomDomain && existingPlayer?.custom_domain) {
@@ -114,7 +139,7 @@ export async function POST(request: Request) {
 
   try {
     if (event.type === "checkout.session.completed" && typeof event.data.object.subscription === "string") {
-      await reconcileCustomer(await getStripe().subscriptions.retrieve(event.data.object.subscription), event.created);
+      await reconcileCustomer(await getStripe().subscriptions.retrieve(event.data.object.subscription), event.created, true, event.id);
     }
     if (["customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted"].includes(event.type)) {
       await reconcileCustomer(event.data.object as Stripe.Subscription, event.created);

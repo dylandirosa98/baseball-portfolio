@@ -53,7 +53,7 @@ export default function AuthPage() {
       }
     }
 
-    router.push("/builder");
+    router.push(mode === "signup" ? "/builder" : "/dashboard");
     router.refresh();
   }
 

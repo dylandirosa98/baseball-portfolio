@@ -86,7 +86,7 @@ export function MarketingVideo({ vertical }: { vertical: boolean }) {
           <AbsoluteFill style={{ background: red, padding: side, justifyContent: "center", alignItems: vertical ? "flex-start" : "center", textAlign: vertical ? "left" : "center" }}>
             <Brand size={vertical ? 190 : 150} />
             <h2 style={{ fontSize: vertical ? 104 : 110, lineHeight: .92, maxWidth: 1400, margin: "60px 0 28px" }}>Make your next introduction count.</h2>
-            <p style={{ fontSize: vertical ? 38 : 32, margin: 0, opacity: .82 }}>$29/month / $39 with a custom domain</p>
+            <p style={{ fontSize: vertical ? 38 : 32, margin: 0, opacity: .82 }}>Free, $15 Pro, or $25 Elite · Custom domain +$10</p>
             <div style={{ marginTop: 56, background: white, color: "#171717", borderRadius: 8, padding: "24px 38px", fontWeight: 900, fontSize: vertical ? 32 : 28 }}>START BUILDING TODAY</div>
           </AbsoluteFill>
         </Fade>
