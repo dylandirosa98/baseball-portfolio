@@ -73,7 +73,7 @@ function ProductWindow() {
             <Image src="/diamond-profile-logo.png" alt="" width={24} height={24} className="h-6 w-6 object-contain" />
             <strong className="hidden text-[11px] text-white/75 sm:block">Diamond Profile</strong>
             <span className="min-w-0 flex-1 truncate rounded-md border border-white/5 bg-black/25 px-3 py-1.5 text-center font-mono text-[8px] text-white/35">
-              diamondprofile.app/marcus-cole
+              diamondprofile.app/diamond-profile
             </span>
             <span className="h-2 w-2 rounded-full bg-[#e01010]" />
           </div>
@@ -103,7 +103,7 @@ function ProductWindow() {
             </div>
             <div className="absolute inset-x-0 bottom-0 z-10 bg-[linear-gradient(transparent,rgba(5,7,9,.96)_38%)] px-5 pb-5 pt-28 sm:pl-16 sm:pr-8 sm:pb-7">
               <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#ff7a7a]">Shortstop · Class of 2027</p>
-              <h3 className="mt-2 text-4xl font-bold tracking-[-0.055em] text-white sm:text-6xl">Marcus Cole</h3>
+              <h3 className="mt-2 text-4xl font-bold tracking-[-0.055em] text-white sm:text-6xl">Diamond Profile</h3>
               <p className="mt-2 text-[11px] text-white/45">Motor City Select · Detroit, Michigan</p>
               <div className="mt-5 grid max-w-lg grid-cols-3 gap-1 sm:grid-cols-6">
                 {[[".347", "AVG"], [".429", "OBP"], [".518", "SLG"], ["5", "HR"], ["31", "RBI"], ["14", "SB"]].map(([value, label]) => (
@@ -251,7 +251,7 @@ export default function HomePage() {
             <div className="relative flex aspect-video items-center justify-center overflow-hidden rounded-xl bg-[linear-gradient(135deg,#401018,#111317_55%,#090a0c)]">
               <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_70%_30%,#ff4d5b,transparent_35%)]" />
               <span className="relative flex h-20 w-20 items-center justify-center rounded-full border border-white/25 bg-black/35 backdrop-blur"><CirclePlay className="h-9 w-9 text-white" /></span>
-              <div className="absolute inset-x-5 bottom-5 flex items-end justify-between"><div><p className="text-lg font-semibold">Marcus Cole</p><p className="mt-1 text-xs text-white/40">6 clips · 04:18</p></div><span className="rounded-full bg-[#e01010] px-3 py-1 text-[10px] font-bold">FEATURED</span></div>
+              <div className="absolute inset-x-5 bottom-5 flex items-end justify-between"><div><p className="text-lg font-semibold">Diamond Profile</p><p className="mt-1 text-xs text-white/40">6 clips · 04:18</p></div><span className="rounded-full bg-[#e01010] px-3 py-1 text-[10px] font-bold">FEATURED</span></div>
             </div>
           </div>
         </div>
