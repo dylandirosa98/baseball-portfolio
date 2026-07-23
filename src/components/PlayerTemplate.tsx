@@ -31,10 +31,11 @@ export default function PlayerTemplate({ player }: PlayerTemplateProps) {
   useEffect(() => {
     const { r, g, b } = hexToRgb(player.themeColor);
     const base = player.lightMode ? 240 : 10; // #f0f0f0 vs #0a0a0a
+    const accentStrength = player.lightMode ? 0.45 : 0.25;
     const blended = {
-      r: Math.round(base + (r - base) * 0.25),
-      g: Math.round(base + (g - base) * 0.25),
-      b: Math.round(base + (b - base) * 0.25),
+      r: Math.round(base + (r - base) * accentStrength),
+      g: Math.round(base + (g - base) * accentStrength),
+      b: Math.round(base + (b - base) * accentStrength),
     };
     const color = `#${blended.r.toString(16).padStart(2, "0")}${blended.g.toString(16).padStart(2, "0")}${blended.b.toString(16).padStart(2, "0")}`;
     document.documentElement.style.backgroundColor = color;

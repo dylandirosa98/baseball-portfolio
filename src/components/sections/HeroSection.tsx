@@ -51,8 +51,8 @@ export default function HeroSection({ player }: HeroSectionProps) {
   const isGdrive = reelVideo?.platform === "gdrive-folder" || reelVideo?.platform === "gdrive-file";
   const bgBase = player.lightMode ? 240 : 10;
   const bgHex = player.lightMode ? "#f0f0f0" : "#0a0a0a";
-  const topColor = blendColor(player.themeColor, player.lightMode ? 0.55 : 0.251, bgBase);
-  const midColor = blendColor(player.themeColor, player.lightMode ? 0.3 : 0.125, bgBase);
+  const topColor = blendColor(player.themeColor, player.lightMode ? 0.76 : 0.251, bgBase);
+  const midColor = blendColor(player.themeColor, player.lightMode ? 0.48 : 0.125, bgBase);
 
   return (
     <>
