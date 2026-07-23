@@ -45,12 +45,28 @@ export interface PlayerRow {
   media: any;
   timeline: any;
   is_published: boolean;
+  billing_tier: "free" | "pro" | "elite";
+  has_custom_domain: boolean;
+  mux_upload_count: number;
   created_at: string;
   updated_at: string;
 }
 
-export function rowToPlayer(row: PlayerRow): PlayerWithMeta {
-  return {
+type RowToPlayerOptions = {
+  enforceEntitlements?: boolean;
+};
+
+function isMuxMedia(value: { url?: string; muxPlaybackId?: string; muxAssetId?: string; muxUploadId?: string }) {
+  return Boolean(
+    value.muxPlaybackId
+    || value.muxAssetId
+    || value.muxUploadId
+    || (value.url && /(?:stream|image)\.mux\.com/i.test(value.url))
+  );
+}
+
+export function rowToPlayer(row: PlayerRow, options: RowToPlayerOptions = {}): PlayerWithMeta {
+  const player: PlayerWithMeta = {
     id: row.id,
     slug: row.slug,
     firstName: row.first_name,
@@ -107,9 +123,39 @@ export function rowToPlayer(row: PlayerRow): PlayerWithMeta {
     numberColor: row.number_color ?? undefined,
     media: row.media ?? [],
     isPublished: row.is_published,
+    billingTier: row.billing_tier ?? "free",
+    hasCustomDomain: row.has_custom_domain ?? false,
+    muxUploadCount: row.mux_upload_count ?? 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+
+  if (!options.enforceEntitlements || player.billingTier !== "free") return player;
+
+  player.highlights = player.highlights.filter((item) => !isMuxMedia(item));
+  player.trainingVideos = (player.trainingVideos ?? []).filter((item) => !isMuxMedia(item));
+  player.media = (player.media ?? []).filter((item) => !isMuxMedia(item));
+  player.interestsMedia = (player.interestsMedia ?? []).filter((item) => !isMuxMedia(item));
+  player.timeline = (player.timeline ?? []).map((entry) => ({
+    ...entry,
+    media: entry.media.filter((item) => !isMuxMedia(item)),
+  }));
+  player.skillsets = (player.skillsets ?? []).map((skill) => {
+    const videos = (skill.videos ?? []).filter((item) => !isMuxMedia(item));
+    if (!isMuxMedia({ url: skill.watchUrl, ...skill })) return { ...skill, videos };
+    return {
+      ...skill,
+      watchUrl: undefined,
+      thumbnailUrl: undefined,
+      muxPlaybackId: undefined,
+      muxAssetId: undefined,
+      muxUploadId: undefined,
+      videos,
+    };
+  });
+  if (player.highlightReelUrl && /(?:stream|image)\.mux\.com/i.test(player.highlightReelUrl)) player.highlightReelUrl = undefined;
+  if (player.trainingVideoUrl && /(?:stream|image)\.mux\.com/i.test(player.trainingVideoUrl)) player.trainingVideoUrl = undefined;
+  return player;
 }
 
 export function playerToRow(player: Partial<Player>): Record<string, unknown> {

@@ -16,16 +16,22 @@ const features = [
 
 const plans = [
   {
-    name: "Standard",
-    price: 29,
-    description: "Everything needed for a polished, shareable player website.",
-    features: ["Complete portfolio builder", "Hosting and secure profile link", "Unlimited edits", "Mobile-ready player page"],
+    name: "Free",
+    price: 0,
+    description: "A complete hosted player profile with generous embedded media.",
+    features: ["10 portfolio images", "5 embedded YouTube videos", "Free Diamond Profile hosting", "Three portfolio designs"],
   },
   {
-    name: "Premium",
-    price: 39,
-    description: "Your player portfolio on its own professional address.",
-    features: ["Everything in Standard", "One custom domain included", "Domain search inside the app", "Setup and renewal managed"],
+    name: "Pro",
+    price: 15,
+    description: "Professional video hosting and performance insights.",
+    features: ["25 portfolio images", "10 professionally hosted videos", "Portfolio and video analytics", "Everything in Free"],
+  },
+  {
+    name: "Elite",
+    price: 25,
+    description: "Maximum flexibility for players with an extensive body of work.",
+    features: ["Fair-use unlimited images", "Fair-use unlimited professional videos", "Portfolio and video analytics", "Everything in Pro"],
   },
 ];
 
@@ -162,21 +168,21 @@ export default function HomePage() {
         <div className="mx-auto max-w-5xl px-4 sm:px-6">
           <div className="text-center">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-red-600">Straightforward pricing</p>
-            <h2 className="mt-3 text-4xl font-black sm:text-5xl">Choose your link.</h2>
-            <p className="mx-auto mt-4 max-w-xl text-black/55">Both plans include the complete builder and hosting. Premium adds a domain we cover while the subscription stays active.</p>
+            <h2 className="mt-3 text-4xl font-black sm:text-5xl">Start free. Upgrade when it matters.</h2>
+            <p className="mx-auto mt-4 max-w-xl text-black/55">Every plan includes a hosted player profile. Add professional video and analytics when you need them. A managed custom domain is available separately for $10 per month.</p>
           </div>
-          <div className="mt-12 grid gap-4 md:grid-cols-2">
+          <div className="mt-12 grid gap-4 md:grid-cols-3">
             {plans.map((plan) => (
-              <article key={plan.name} className={`rounded-lg border p-6 sm:p-8 ${plan.name === "Premium" ? "border-[#172018] bg-[#172018] text-white" : "border-black/15 bg-white"}`}>
+              <article key={plan.name} className={`rounded-lg border p-6 sm:p-8 ${plan.name === "Pro" ? "border-[#172018] bg-[#172018] text-white" : "border-black/15 bg-white"}`}>
                 <div className="flex items-start justify-between gap-4">
-                  <div><p className="text-xl font-bold">{plan.name}</p><p className={`mt-2 text-sm leading-6 ${plan.name === "Premium" ? "text-white/55" : "text-black/55"}`}>{plan.description}</p></div>
-                  {plan.name === "Premium" && <Globe2 className="h-6 w-6 text-red-300" />}
+                  <div><p className="text-xl font-bold">{plan.name}</p><p className={`mt-2 text-sm leading-6 ${plan.name === "Pro" ? "text-white/55" : "text-black/55"}`}>{plan.description}</p></div>
+                  {plan.name === "Pro" && <Globe2 className="h-6 w-6 text-red-300" />}
                 </div>
-                <p className="mt-8 text-5xl font-black">${plan.price}<span className="text-sm font-medium opacity-50"> / month</span></p>
+                <p className="mt-8 text-5xl font-black">${plan.price}<span className="text-sm font-medium opacity-50">{plan.price ? " / month" : " forever"}</span></p>
                 <ul className="mt-8 space-y-3">
                   {plan.features.map((feature) => <li key={feature} className="flex gap-3 text-sm"><Check className="h-4 w-4 shrink-0 text-red-400" />{feature}</li>)}
                 </ul>
-                <Link href="/builder" className={`mt-8 flex min-h-12 items-center justify-center gap-2 rounded-md font-bold ${plan.name === "Premium" ? "bg-white text-black" : "bg-[#172018] text-white"}`}>
+                <Link href="/builder" className={`mt-8 flex min-h-12 items-center justify-center gap-2 rounded-md font-bold ${plan.name === "Pro" ? "bg-white text-black" : "bg-[#172018] text-white"}`}>
                   Start building <ArrowRight className="h-4 w-4" />
                 </Link>
               </article>
@@ -195,7 +201,7 @@ export default function HomePage() {
       <footer className="border-t border-black/10 bg-white py-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 text-sm text-black/45 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <Image src="/diamond-profile-logo.png" alt="Diamond Profile" width={180} height={180} className="h-20 w-20 object-contain" />
-          <div className="flex gap-5"><Link href="/builder">Builder</Link><Link href="/auth">Sign in</Link><a href="#pricing">Pricing</a></div>
+          <div className="flex flex-wrap gap-5"><Link href="/builder">Builder</Link><Link href="/auth">Sign in</Link><a href="#pricing">Pricing</a><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link><Link href="/support">Support</Link></div>
         </div>
       </footer>
     </main>

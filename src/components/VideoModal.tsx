@@ -41,6 +41,10 @@ export default function VideoModal({ url = "", playbackId, title, isOpen, onClos
     };
   }, [isOpen, handleKeyDown]);
 
+  useEffect(() => {
+    if (isOpen) window.dispatchEvent(new Event("diamond:video-play"));
+  }, [isOpen]);
+
   return (
     <AnimatePresence>
       {isOpen && (

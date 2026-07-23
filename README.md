@@ -9,9 +9,10 @@ A mobile-first builder for baseball players and families to create a polished re
 - Photos, background removal, video, training, academics, social links, and player story
 - Supabase email/password authentication and cloud portfolio sync
 - Owner-scoped row-level security and media storage
-- Stripe Checkout scaffolding for $29 Standard and $39 Premium subscriptions
-- Signed Stripe webhook that publishes or unpublishes profiles as subscription status changes
-- Premium custom-domain search through Vercel
+- Free, Pro ($15/month), and Elite ($25/month) plans with enforced media entitlements
+- Independent $10/month managed custom-domain add-on
+- Signed, idempotent Stripe webhooks and Stripe Customer Portal billing management
+- Automated standard-price .com search, purchase, renewal, and Vercel project connection
 - Landscape and vertical Remotion marketing-video compositions
 - A new baseball-focused marketing and pricing homepage
 
@@ -45,7 +46,7 @@ Add `SUPABASE_SERVICE_ROLE_KEY` only to server-side deployment environment varia
 
 ## Stripe
 
-Create two recurring monthly prices and add their IDs to `.env.local`. Configure the webhook endpoint:
+Local development must use Stripe test-mode credentials. Production must use live-mode credentials and the three recurring monthly price IDs in `.env.production.example`. Configure the webhook endpoint:
 
 ```
 https://YOUR_DOMAIN/api/stripe/webhook
@@ -54,10 +55,25 @@ https://YOUR_DOMAIN/api/stripe/webhook
 Subscribe it to:
 
 - `checkout.session.completed`
+- `customer.subscription.created`
 - `customer.subscription.updated`
 - `customer.subscription.deleted`
 
 Then set `STRIPE_WEBHOOK_SECRET`.
+
+Enable the Stripe Customer Portal for subscription cancellation and plan management.
+
+## Production
+
+Use `.env.production.example` as the Vercel Production environment checklist. Managed domains require the Vercel project identifier, registrar contact fields, and a maximum purchase-price ceiling. Apply every migration before deploying:
+
+```bash
+npx supabase db push
+npm run lint
+npm run build
+```
+
+The Privacy Policy and Terms included in the app are launch baselines and should be reviewed by qualified counsel before accepting paying customers.
 
 ## Marketing videos
 

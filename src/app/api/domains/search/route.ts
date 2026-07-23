@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getDomainPrice, maximumDomainPrice } from "@/lib/vercel-domains";
 
-const domainPattern = /^(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z]{2,63}$/;
+const domainPattern = /^(?!-)[a-z0-9-]+\.com$/;
 
 function normalizeDomain(value: string) {
   return value.trim().toLowerCase().replace(/^https?:\/\//, "").split("/")[0];
@@ -11,7 +13,7 @@ export async function GET(request: Request) {
   const domain = normalizeDomain(requestUrl.searchParams.get("domain") || "");
 
   if (!domainPattern.test(domain) || domain.length > 253) {
-    return NextResponse.json({ error: "Enter a valid domain like playername.com." }, { status: 400 });
+    return NextResponse.json({ error: "Enter a standard .com domain like playername.com." }, { status: 400 });
   }
 
   const token = process.env.VERCEL_API_TOKEN;
@@ -30,6 +32,13 @@ export async function GET(request: Request) {
   }
 
   try {
+    const { data: claimed } = await createAdminClient()
+      .from("players")
+      .select("id")
+      .eq("custom_domain", domain)
+      .maybeSingle();
+    if (claimed) return NextResponse.json({ domain, available: false });
+
     const vercelResponse = await fetch(availabilityUrl, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -48,7 +57,17 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Domain search is temporarily unavailable. Try again shortly." }, { status: 502 });
     }
 
-    return NextResponse.json({ domain, available: result.available });
+    if (!result.available) return NextResponse.json({ domain, available: false });
+
+    const price = await getDomainPrice(domain);
+    const maxPrice = maximumDomainPrice();
+    return NextResponse.json({
+      domain,
+      available: price.purchasePrice <= maxPrice,
+      purchasePrice: price.purchasePrice,
+      renewalPrice: price.renewalPrice,
+      standardPrice: price.purchasePrice <= maxPrice,
+    });
   } catch (error) {
     console.error("Vercel domain request failed", error);
     return NextResponse.json({ error: "Domain search is temporarily unavailable. Try again shortly." }, { status: 502 });

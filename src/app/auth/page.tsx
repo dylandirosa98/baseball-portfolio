@@ -11,6 +11,7 @@ export default function AuthPage() {
   const [mode, setMode] = useState<"signin" | "signup">("signup");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [adultConsent, setAdultConsent] = useState(false);
   const [state, setState] = useState<"idle" | "loading" | "sent" | "error">("idle");
   const [message, setMessage] = useState("");
   const router = useRouter();
@@ -25,7 +26,13 @@ export default function AuthPage() {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=/builder` },
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=/builder`,
+          data: {
+            adult_account_holder: true,
+            terms_accepted_at: new Date().toISOString(),
+          },
+        },
       });
       if (error) {
         setState("error");
@@ -71,6 +78,12 @@ export default function AuthPage() {
             Password
             <input required minLength={8} type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} className="mt-2 min-h-12 w-full rounded-lg border border-white/10 bg-white/5 px-4 text-base outline-none focus:border-red-400" />
           </label>
+          {mode === "signup" && (
+            <label className="flex items-start gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs leading-5 text-white/55">
+              <input required type="checkbox" checked={adultConsent} onChange={(event) => setAdultConsent(event.target.checked)} className="mt-1 size-4 shrink-0 accent-red-500" />
+              <span>I am at least 18 years old and am the player, a parent or legal guardian, or an adult authorized to publish this player&apos;s information. I agree to the <Link href="/terms" className="underline">Terms</Link> and acknowledge the <Link href="/privacy" className="underline">Privacy Policy</Link>.</span>
+            </label>
+          )}
           <button disabled={state === "loading"} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-white px-4 font-bold text-black disabled:opacity-60">
             {state === "loading" && <LoaderCircle className="h-4 w-4 animate-spin" />}
             {mode === "signup" ? "Create account" : "Sign in"}
@@ -82,6 +95,7 @@ export default function AuthPage() {
         <button type="button" onClick={() => { setMode(mode === "signup" ? "signin" : "signup"); setMessage(""); setState("idle"); }} className="mt-6 min-h-11 text-sm font-semibold text-white/55 hover:text-white">
           {mode === "signup" ? "Already have an account? Sign in" : "New here? Create an account"}
         </button>
+        {mode === "signin" && <Link href="/auth/reset" className="mt-2 inline-flex min-h-11 items-center text-sm text-white/40 hover:text-white">Forgot your password?</Link>}
       </div>
     </main>
   );

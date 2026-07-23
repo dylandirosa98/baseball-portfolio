@@ -112,6 +112,9 @@ export interface Player {
 export interface PlayerWithMeta extends Player {
   id: string;
   isPublished: boolean;
+  billingTier: "free" | "pro" | "elite";
+  hasCustomDomain: boolean;
+  muxUploadCount: number;
   createdAt: string;
   updatedAt: string;
 }

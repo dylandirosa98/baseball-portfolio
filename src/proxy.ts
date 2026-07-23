@@ -22,6 +22,8 @@ export async function proxy(request: NextRequest) {
       .from("players")
       .select("slug")
       .eq("custom_domain", hostname)
+      .eq("has_custom_domain", true)
+      .eq("custom_domain_status", "active")
       .eq("is_published", true)
       .maybeSingle();
 

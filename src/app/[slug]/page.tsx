@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { rowToPlayer, PlayerRow } from "@/lib/supabase/transforms";
 import PlayerTemplate from "@/components/PlayerTemplate";
+import PortfolioAnalytics from "@/components/PortfolioAnalytics";
 import type { Metadata } from "next";
 
 interface PageProps {
@@ -39,7 +40,12 @@ export default async function PlayerPage({ params }: PageProps) {
 
   if (error || !data) notFound();
 
-  const player = rowToPlayer(data as PlayerRow);
+  const player = rowToPlayer(data as PlayerRow, { enforceEntitlements: true });
 
-  return <PlayerTemplate player={player} />;
+  return (
+    <>
+      <PortfolioAnalytics slug={player.slug} />
+      <PlayerTemplate player={player} />
+    </>
+  );
 }

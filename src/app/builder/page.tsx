@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import NextImage from "next/image";
 import {
@@ -37,8 +37,9 @@ import PlayerTemplate from "@/components/PlayerTemplate";
 import ImageUpload from "@/components/admin/ImageUpload";
 import MediaPhotoUpload from "@/components/admin/MediaPhotoUpload";
 import MediaVideoUpload from "@/components/admin/MediaVideoUpload";
-import type { Highlight, MediaItem, Player, PlayerDesign, PlayerStats, Skillset, SocialLink } from "@/lib/types";
+import type { Highlight, MediaItem, Player, PlayerDesign, PlayerStats, PlayerWithMeta, Skillset, SocialLink } from "@/lib/types";
 import { DEFAULT_PLAYER_IMAGE, normalizedHeroImageScale } from "@/lib/player-image";
+import { PROFILE_DOMAIN, normalizeProfileSlug, profileSlugError, sanitizeProfileSlugInput } from "@/lib/slug";
 
 const STORAGE_KEY = "diamond_builder_draft_v1";
 const ACTIVE_STEP_KEY = "diamond_builder_active_step_v1";
@@ -245,7 +246,7 @@ export default function BuilderPage() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewMode, setPreviewMode] = useState<"phone" | "full">("phone");
   const [loaded, setLoaded] = useState(false);
-  const [saveState, setSaveState] = useState<"saving" | "saved">("saved");
+  const [saveState, setSaveState] = useState<"saving" | "saved" | "error">("saved");
   const [cloudEnabled, setCloudEnabled] = useState(false);
   const [checkoutResult, setCheckoutResult] = useState<"success" | "canceled" | null>(null);
 
@@ -289,14 +290,15 @@ export default function BuilderPage() {
     setSaveState("saving");
     const timeout = window.setTimeout(async () => {
       try {
-        await fetch("/api/portfolio", {
+        const response = await fetch("/api/portfolio", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(draft),
         });
+        if (!response.ok) throw new Error("Cloud save failed");
         setSaveState("saved");
       } catch {
-        setSaveState("saved");
+        setSaveState("error");
       }
     }, 900);
     return () => window.clearTimeout(timeout);
@@ -366,10 +368,12 @@ export default function BuilderPage() {
             <div aria-live="polite" className="hidden min-w-20 items-center justify-end gap-1.5 text-xs text-white/40 sm:flex">
               {saveState === "saving" ? (
                 <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+              ) : saveState === "error" ? (
+                <X className="h-3.5 w-3.5 text-red-300" />
               ) : (
                 <Save className="h-3.5 w-3.5" />
               )}
-              {saveState === "saving" ? "Saving" : cloudEnabled ? "Saved to account" : "Saved on device"}
+              {saveState === "saving" ? "Saving" : saveState === "error" ? "Save failed" : cloudEnabled ? "Saved to account" : "Saved on device"}
             </div>
 
             <Link
@@ -1106,6 +1110,7 @@ const contentTabs: { id: ContentPanel; label: string }[] = [
 
 function ContentStep({ draft, update }: { draft: Player; update: (updates: Partial<Player>) => void }) {
   const [activePanel, setActivePanel] = useState<ContentPanel>("skills");
+  const contentTabsRef = useRef<HTMLDivElement>(null);
   const [indexes, setIndexes] = useState<ContentIndexes>({
     skills: 0,
     media: 0,
@@ -1125,22 +1130,52 @@ function ContentStep({ draft, update }: { draft: Player; update: (updates: Parti
     setIndexes((prev) => ({ ...prev, [key]: Math.min(prev[key], Math.max(0, nextCount - 1)) }));
   }
 
+  function scrollContentTabs(direction: -1 | 1) {
+    contentTabsRef.current?.scrollBy({ left: direction * 220, behavior: "smooth" });
+  }
+
   return (
     <div>
       <SectionHeader title="Build the story" body="Start with the skill cards and add only the sections that help tell the player\'s story." />
-      <div className="scrollbar-hide -mx-1 mb-5 flex gap-2 overflow-x-auto px-1 pb-1" role="tablist" aria-label="Portfolio content sections">
-        {contentTabs.map((tab) => (
+      <div className="mb-5">
+        <div className="mb-2 flex items-center justify-end gap-2">
+          <span className="mr-1 text-[11px] font-medium text-white/40">Scroll sections</span>
           <button
-            key={tab.id}
             type="button"
-            onClick={() => setActivePanel(tab.id)}
-            role="tab"
-            aria-selected={activePanel === tab.id}
-            className={`min-h-11 shrink-0 rounded-lg border px-3 text-xs font-semibold transition ${activePanel === tab.id ? "border-white bg-white text-black" : "border-white/10 bg-white/[0.025] text-white/50 hover:border-white/25 hover:text-white"}`}
+            onClick={() => scrollContentTabs(-1)}
+            className="flex size-9 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-white/70 transition hover:border-white/25 hover:bg-white/[0.08] hover:text-white"
+            aria-label="Scroll story sections left"
           >
-            {tab.label}
+            <ChevronLeft className="size-4" />
           </button>
-        ))}
+          <button
+            type="button"
+            onClick={() => scrollContentTabs(1)}
+            className="flex size-9 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-white/70 transition hover:border-white/25 hover:bg-white/[0.08] hover:text-white"
+            aria-label="Scroll story sections right"
+          >
+            <ChevronRight className="size-4" />
+          </button>
+        </div>
+        <div
+          ref={contentTabsRef}
+          className="scrollbar-hide -mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain scroll-smooth px-1 pb-1 touch-pan-x"
+          role="tablist"
+          aria-label="Portfolio content sections"
+        >
+          {contentTabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActivePanel(tab.id)}
+              role="tab"
+              aria-selected={activePanel === tab.id}
+              className={`min-h-11 shrink-0 snap-start rounded-lg border px-3 text-xs font-semibold transition ${activePanel === tab.id ? "border-white bg-white text-black" : "border-white/10 bg-white/[0.025] text-white/50 hover:border-white/25 hover:text-white"}`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {activePanel === "skills" && (
@@ -1541,7 +1576,7 @@ function TrainingContentEditor({ draft, index, uploadSlug, onIndex, onChange, up
       <Field label="Shared Training Description"><textarea className={inputClass} rows={3} value={draft.trainingDescription ?? ""} onChange={(e) => update({ trainingDescription: e.target.value })} /></Field>
       <MediaContentEditor
         title="Training Slides"
-        body="Each slide can have its own title and Mux video."
+        body="Each slide can have its own title and professionally hosted video."
         items={mediaItems}
         index={index}
         uploadSlug={uploadSlug}
@@ -1798,115 +1833,147 @@ function LinksStep({ draft, update }: { draft: Player; update: (updates: Partial
   );
 }
 
-type PlanId = "standard" | "premium";
+type BillingTier = "free" | "pro" | "elite";
 type DomainState = "idle" | "checking" | "available" | "unavailable" | "error";
+type SlugState = "idle" | "checking" | "available" | "unavailable" | "error";
 
-const launchPlans: { id: PlanId; name: string; price: number; description: string; features: string[] }[] = [
-  {
-    id: "standard",
-    name: "Standard",
-    price: 29,
-    description: "Everything needed to build and share a polished portfolio.",
-    features: ["Full portfolio builder", "Hosting and secure profile link", "Edit anytime from your phone"],
-  },
-  {
-    id: "premium",
-    name: "Premium",
-    price: 39,
-    description: "A professional home for players who want their own address.",
-    features: ["Everything in Standard", "One custom domain included", "Domain setup and renewal managed for you"],
-  },
+const launchPlans = [
+  { id: "free" as const, name: "Free", price: 0, description: "A complete hosted player profile with generous embedded media.", features: ["10 portfolio images", "5 embedded YouTube videos", "Free Diamond Profile hosting"] },
+  { id: "pro" as const, name: "Pro", price: 15, description: "Professional video hosting and performance insights.", features: ["25 portfolio images", "10 professionally hosted video uploads", "Portfolio and video analytics"] },
+  { id: "elite" as const, name: "Elite", price: 25, description: "Maximum flexibility for players with an extensive body of work.", features: ["Fair-use unlimited images", "Fair-use unlimited professionally hosted videos", "Portfolio and video analytics"] },
 ];
 
 function suggestedDomain(draft: Player) {
-  const name = [draft.firstName, draft.lastName]
-    .filter(Boolean)
-    .join("")
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "");
-  return name ? `${name}.com` : "";
+  const name = [draft.firstName, draft.lastName].filter(Boolean).join("").toLowerCase().replace(/[^a-z0-9]/g, "");
+  return name ? name + ".com" : "";
 }
 
 function normalizeDomain(value: string) {
   const domain = value.trim().toLowerCase().replace(/^https?:\/\//, "").split("/")[0];
-  return domain.includes(".") ? domain : `${domain}.com`;
+  return domain.includes(".") ? domain : domain + ".com";
 }
 
-function ReviewStep({
-  draft,
-  update,
-  checkoutResult,
-}: {
+function ReviewStep({ draft, update, checkoutResult }: {
   draft: Player;
   update: (updates: Partial<Player>) => void;
   checkoutResult: "success" | "canceled" | null;
 }) {
-  const [plan, setPlan] = useState<PlanId>("standard");
+  const cloudDraft = draft as Player & Partial<PlayerWithMeta>;
+  const currentTier = cloudDraft.billingTier === "pro" || cloudDraft.billingTier === "elite" ? cloudDraft.billingTier : "free";
+  const [tier, setTier] = useState<BillingTier>(currentTier);
+  const initialSlug = draft.slug && draft.slug !== "preview" ? normalizeProfileSlug(draft.slug) : uploadSlugFor(draft);
+  const [profileSlug, setProfileSlug] = useState(initialSlug);
+  const [slugState, setSlugState] = useState<SlugState>("idle");
+  const [slugMessage, setSlugMessage] = useState("");
+  const [customDomain, setCustomDomain] = useState(Boolean(cloudDraft.hasCustomDomain));
   const [domainInput, setDomainInput] = useState(draft.customDomain || suggestedDomain(draft));
   const [domainState, setDomainState] = useState<DomainState>(draft.customDomain ? "available" : "idle");
   const [domainMessage, setDomainMessage] = useState("");
   const [checkoutState, setCheckoutState] = useState<"idle" | "loading" | "error">("idle");
   const [checkoutMessage, setCheckoutMessage] = useState("");
+  const [publishedSlug, setPublishedSlug] = useState("");
 
   useEffect(() => {
-    const savedPlan = localStorage.getItem("diamond_builder_plan");
-    if (savedPlan !== "standard" && savedPlan !== "premium") return;
-    const frame = requestAnimationFrame(() => setPlan(savedPlan));
+    const savedTier = localStorage.getItem("diamond_builder_tier");
+    const savedDomain = localStorage.getItem("diamond_builder_custom_domain");
+    const frame = requestAnimationFrame(() => {
+      if (currentTier === "free" && (savedTier === "free" || savedTier === "pro" || savedTier === "elite")) setTier(savedTier);
+      if (!cloudDraft.hasCustomDomain && savedDomain === "true") setCustomDomain(true);
+    });
     return () => cancelAnimationFrame(frame);
-  }, []);
+  }, [cloudDraft.hasCustomDomain, currentTier]);
+
+  useEffect(() => {
+    const slug = normalizeProfileSlug(profileSlug);
+    const validationError = profileSlugError(profileSlug);
+    if (validationError) {
+      setSlugState("error");
+      setSlugMessage(validationError);
+      return;
+    }
+
+    const controller = new AbortController();
+    setSlugState("checking");
+    setSlugMessage("Checking availability...");
+    const timeout = window.setTimeout(async () => {
+      try {
+        const response = await fetch("/api/slugs/search?slug=" + encodeURIComponent(slug), { signal: controller.signal });
+        const data = await response.json();
+        if (!response.ok) {
+          setSlugState("error");
+          setSlugMessage(data.error || "Address availability could not be checked.");
+        } else if (data.available) {
+          setSlugState("available");
+          setSlugMessage(PROFILE_DOMAIN + "/" + data.slug + " is available.");
+        } else {
+          setSlugState("unavailable");
+          setSlugMessage(data.error || "That address is already taken.");
+        }
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          setSlugState("error");
+          setSlugMessage("Address availability could not be checked.");
+        }
+      }
+    }, 350);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timeout);
+    };
+  }, [profileSlug]);
 
   const checks = [
     ["Player name", !!draft.firstName && !!draft.lastName],
     ["Team and league", !!draft.team && !!draft.league],
     ["Hero photo", !!draft.heroImageUrl && !draft.heroImageUrl.includes("placeholder")],
     ["Player bio", !!draft.bio],
-    [
-      "Video or highlight",
-      (draft.media ?? []).some((item) => !!item.url) ||
-        draft.highlights.some((item) => !!item.url) ||
-        (draft.trainingVideos ?? []).some((item) => !!item.url),
-    ],
+    ["Video or highlight", (draft.media ?? []).some((item) => !!item.url) || draft.highlights.some((item) => !!item.url) || (draft.trainingVideos ?? []).some((item) => !!item.url)],
   ] as const;
   const readyCount = checks.filter(([, done]) => done).length;
-  const selectedPlan = launchPlans.find((item) => item.id === plan) ?? launchPlans[0];
+  const selectedPlan = launchPlans.find((item) => item.id === tier) ?? launchPlans[0];
+  const total = selectedPlan.price + (customDomain ? 10 : 0);
+  const domainReady = !customDomain || domainState === "available";
+  const slugReady = slugState === "available";
 
-  function choosePlan(nextPlan: PlanId) {
-    setPlan(nextPlan);
-    localStorage.setItem("diamond_builder_plan", nextPlan);
+  function chooseTier(nextTier: BillingTier) {
+    setTier(nextTier);
+    localStorage.setItem("diamond_builder_tier", nextTier);
+    setCheckoutMessage("");
+  }
+
+  function toggleDomain() {
+    const next = !customDomain;
+    setCustomDomain(next);
+    localStorage.setItem("diamond_builder_custom_domain", String(next));
     setCheckoutMessage("");
   }
 
   async function searchDomain(event: React.FormEvent) {
     event.preventDefault();
     const domain = normalizeDomain(domainInput);
-
-    if (!/^(?!-)[a-z0-9-]+(?:\.[a-z0-9-]+)+$/.test(domain)) {
+    if (!/^(?!-)[a-z0-9-]+\.com$/.test(domain)) {
       setDomainState("error");
-      setDomainMessage("Enter a domain like alexmorgan.com.");
+      setDomainMessage("The included offer supports standard .com domains, such as alexmorgan.com.");
       return;
     }
 
     setDomainInput(domain);
     setDomainState("checking");
     setDomainMessage("");
-
     try {
-      const response = await fetch(`/api/domains/search?domain=${encodeURIComponent(domain)}`);
+      const response = await fetch("/api/domains/search?domain=" + encodeURIComponent(domain));
       const data = await response.json();
-
       if (!response.ok) {
         setDomainState("error");
         setDomainMessage(data.error || "Domain search is unavailable right now.");
-        return;
-      }
-
-      if (data.available) {
+      } else if (data.available) {
         setDomainState("available");
-        setDomainMessage(`${domain} is available and can be included with Premium.`);
+        setDomainMessage(domain + " is available. Diamond Profile will purchase and manage it while the add-on stays active.");
         update({ customDomain: domain });
       } else {
         setDomainState("unavailable");
-        setDomainMessage(`${domain} is already taken. Try another name.`);
+        setDomainMessage(domain + " is already taken or is not a standard-priced domain. Try another name.");
         if (draft.customDomain === domain) update({ customDomain: "" });
       }
     } catch {
@@ -1915,127 +1982,174 @@ function ReviewStep({
     }
   }
 
-  async function startCheckout() {
+  async function saveDraft() {
+    const launchDraft = { ...draft, slug: profileSlug };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(launchDraft));
+    const response = await fetch("/api/portfolio", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(launchDraft),
+    });
+    const data = await response.json();
+    if (response.status === 401) {
+      window.location.assign("/auth");
+      return null;
+    }
+    if (!response.ok) throw new Error(data.error || "Your portfolio could not be saved.");
+    return data;
+  }
+
+  async function startLaunch() {
+    if (!slugReady) {
+      setCheckoutState("error");
+      setCheckoutMessage("Choose an available Diamond Profile address first.");
+      return;
+    }
+    if (!domainReady) {
+      setCheckoutState("error");
+      setCheckoutMessage("Search for and confirm an available .com domain first.");
+      return;
+    }
     setCheckoutState("loading");
     setCheckoutMessage("");
 
     try {
+      const saved = await saveDraft();
+      if (!saved) return;
+
+      const publishResponse = await fetch("/api/portfolio/publish", { method: "POST" });
+      const publishData = await publishResponse.json();
+      if (!publishResponse.ok) throw new Error(publishData.error || "Your portfolio could not be published.");
+
+      if (tier === "free" && !customDomain) {
+        setPublishedSlug(publishData.slug || draft.slug);
+        setCheckoutState("idle");
+        return;
+      }
+
       const response = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          plan,
-          slug: uploadSlugFor(draft),
+          tier,
+          customDomain,
+          slug: profileSlug,
           playerName: [draft.firstName, draft.lastName].filter(Boolean).join(" "),
-          domain: plan === "premium" && domainState === "available" ? domainInput : "",
+          domain: customDomain ? domainInput : "",
         }),
       });
       const data = await response.json();
-
       if (response.status === 401) {
         window.location.assign("/auth");
         return;
       }
-
-      if (!response.ok || !data.url) {
-        setCheckoutState("error");
-        setCheckoutMessage(data.error || "Checkout could not start. Try again.");
-        return;
-      }
-
+      if (!response.ok || !data.url) throw new Error(data.error || "Checkout could not start. Try again.");
       window.location.assign(data.url);
-    } catch {
+    } catch (error) {
       setCheckoutState("error");
-      setCheckoutMessage("Checkout could not start. Check your connection and try again.");
+      setCheckoutMessage(error instanceof Error ? error.message : "Checkout could not start. Try again.");
     }
   }
 
   return (
     <div>
-      <SectionHeader
-        title="Ready when you are"
-        body="Choose a plan to publish. You can keep improving every section after you subscribe."
-      />
+      <SectionHeader title="Publish your portfolio" body="Start free, then add professional video, analytics, or a managed custom domain whenever you need them." />
 
+      <section className="mb-6 rounded-lg border border-white/10 bg-white/[0.02] p-4">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-white/55">
+            <Link2 className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-white/85">Choose your profile address</h3>
+            <p className="mt-1 text-xs leading-5 text-white/40">This is the link coaches and recruiters will use.</p>
+          </div>
+        </div>
+        <label className="mt-4 block">
+          <span className="sr-only">Diamond Profile address</span>
+          <span className="flex min-h-12 items-center overflow-hidden rounded-lg border border-white/10 bg-black/30 focus-within:border-white/35">
+            <span className="shrink-0 border-r border-white/10 px-3 text-xs text-white/40">{PROFILE_DOMAIN}/</span>
+            <input
+              value={profileSlug}
+              onChange={(event) => {
+                setProfileSlug(sanitizeProfileSlugInput(event.target.value));
+                setSlugState("idle");
+                setSlugMessage("");
+              }}
+              minLength={3}
+              maxLength={60}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              className="min-w-0 flex-1 bg-transparent px-3 py-3 text-sm font-semibold text-white outline-none"
+              placeholder="player-name"
+            />
+            <span className="flex w-10 shrink-0 justify-center">
+              {slugState === "checking" && <LoaderCircle className="h-4 w-4 animate-spin text-white/45" />}
+              {slugState === "available" && <CheckCircle2 className="h-4 w-4 text-emerald-300" />}
+              {(slugState === "unavailable" || slugState === "error") && <X className="h-4 w-4 text-red-300" />}
+            </span>
+          </span>
+        </label>
+        {slugMessage && (
+          <p aria-live="polite" className={"mt-2 text-xs leading-5 " + (slugState === "available" ? "text-emerald-300" : slugState === "checking" ? "text-white/35" : "text-red-300")}>
+            {slugMessage}
+          </p>
+        )}
+      </section>
+
+
+      {publishedSlug && (
+        <div className="mb-5 rounded-lg border border-emerald-400/25 bg-emerald-400/10 p-3 text-sm text-emerald-100">
+          <p className="font-semibold">Your free portfolio is live</p>
+          <Link href={"/" + publishedSlug} className="mt-1 inline-flex items-center gap-1 font-semibold underline">View portfolio <ArrowRight className="h-3.5 w-3.5" /></Link>
+        </div>
+      )}
       {checkoutResult === "success" && (
         <div className="mb-5 flex gap-3 rounded-lg border border-emerald-400/25 bg-emerald-400/10 p-3 text-sm text-emerald-100">
           <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300" />
-          <div>
-            <p className="font-semibold">Checkout complete</p>
-            <p className="mt-0.5 text-emerald-100/65">Your subscription is being confirmed. Your draft is still saved here.</p>
-          </div>
+          <div><p className="font-semibold">Checkout complete</p><p className="mt-0.5 text-emerald-100/65">Your add-ons are being confirmed and your portfolio remains live.</p></div>
         </div>
       )}
-
-      {checkoutResult === "canceled" && (
-        <div className="mb-5 rounded-lg border border-white/10 bg-white/[0.04] p-3 text-sm text-white/65">
-          No charge was made. Your draft and plan choice are still here.
-        </div>
-      )}
+      {checkoutResult === "canceled" && <div className="mb-5 rounded-lg border border-white/10 bg-white/[0.04] p-3 text-sm text-white/65">No charge was made. Your portfolio and selections are still saved.</div>}
 
       <div className="mb-6">
         <div className="mb-3 flex items-end justify-between gap-3">
-          <div>
-            <h3 className="text-sm font-semibold text-white/85">Profile check</h3>
-            <p className="mt-0.5 text-xs text-white/35">Missing items will not block checkout.</p>
-          </div>
+          <div><h3 className="text-sm font-semibold text-white/85">Profile check</h3><p className="mt-0.5 text-xs text-white/35">Missing items will not block publishing.</p></div>
           <span className="text-xs font-semibold text-white/45">{readyCount} of {checks.length} ready</span>
         </div>
         <div className="divide-y divide-white/[0.06] border-y border-white/[0.08]">
           {checks.map(([label, done]) => (
             <div key={label} className="flex min-h-11 items-center justify-between gap-3 py-2 text-sm">
               <span className="text-white/65">{label}</span>
-              <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${done ? "text-emerald-300" : "text-white/30"}`}>
-                {done && <Check className="h-3.5 w-3.5" />}
-                {done ? "Ready" : "Add later"}
-              </span>
+              <span className={"inline-flex items-center gap-1.5 text-xs font-semibold " + (done ? "text-emerald-300" : "text-white/30")}>{done && <Check className="h-3.5 w-3.5" />}{done ? "Ready" : "Add later"}</span>
             </div>
           ))}
         </div>
       </div>
 
       <div>
-        <h3 className="text-sm font-semibold text-white/85">Choose your plan</h3>
-        <p className="mt-1 text-xs text-white/35">Monthly billing. Change or cancel from your account.</p>
+        <h3 className="text-sm font-semibold text-white/85">Choose a base plan</h3>
+        <p className="mt-1 text-xs text-white/35">Free stays free. Paid plans bill monthly and can be canceled from your account.</p>
         <div className="mt-3 grid gap-3">
           {launchPlans.map((item) => {
-            const selected = item.id === plan;
+            const selected = item.id === tier;
             return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => choosePlan(item.id)}
-                aria-pressed={selected}
-                className={`w-full rounded-lg border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${
-                  selected
-                    ? item.id === "premium"
-                      ? "border-amber-300/60 bg-amber-300/[0.08]"
-                      : "border-white/50 bg-white/[0.07]"
-                    : "border-white/10 bg-white/[0.02] hover:border-white/25"
-                }`}
-              >
+              <button key={item.id} type="button" onClick={() => chooseTier(item.id)} aria-pressed={selected}
+                className={"w-full rounded-lg border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 " + (selected ? "border-white/55 bg-white/[0.07]" : "border-white/10 bg-white/[0.02] hover:border-white/25")}>
                 <span className="flex items-start justify-between gap-4">
                   <span>
                     <span className="flex items-center gap-2">
                       <span className="text-base font-bold">{item.name}</span>
-                      {item.id === "premium" && (
-                        <span className="rounded-md bg-amber-300 px-2 py-1 text-[10px] font-bold text-black">CUSTOM DOMAIN</span>
-                      )}
+                      {item.id === "pro" && <span className="rounded-md bg-emerald-300 px-2 py-1 text-[10px] font-bold text-black">POPULAR</span>}
+                      {item.id === "elite" && <span className="rounded-md bg-amber-300 px-2 py-1 text-[10px] font-bold text-black">UNLIMITED</span>}
                     </span>
                     <span className="mt-1 block text-sm leading-5 text-white/45">{item.description}</span>
                   </span>
-                  <span className="shrink-0 text-right">
-                    <span className="text-2xl font-bold">${item.price}</span>
-                    <span className="block text-[11px] text-white/35">per month</span>
-                  </span>
+                  <span className="shrink-0 text-right"><span className="text-2xl font-bold">{"$"}{item.price}</span><span className="block text-[11px] text-white/35">{item.price ? "per month" : "forever"}</span></span>
                 </span>
                 <span className="mt-4 grid gap-2 border-t border-white/10 pt-3">
-                  {item.features.map((feature) => (
-                    <span key={feature} className="flex items-center gap-2 text-xs text-white/60">
-                      <Check className={`h-3.5 w-3.5 shrink-0 ${item.id === "premium" ? "text-amber-300" : "text-emerald-300"}`} />
-                      {feature}
-                    </span>
-                  ))}
+                  {item.features.map((feature) => <span key={feature} className="flex items-center gap-2 text-xs text-white/60"><Check className="h-3.5 w-3.5 shrink-0 text-emerald-300" />{feature}</span>)}
                 </span>
               </button>
             );
@@ -2043,99 +2157,43 @@ function ReviewStep({
         </div>
       </div>
 
-      {plan === "premium" && (
-        <section className="mt-6 border-y border-white/10 py-5">
-          <div className="flex gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-300/10 text-amber-300">
-              <Globe2 className="h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-white/85">Find your domain</h3>
-              <p className="mt-1 text-xs leading-5 text-white/40">Choose one now or after subscribing. Diamond Profile covers and manages one domain while Premium stays active.</p>
-            </div>
+      <section className="mt-6 rounded-lg border border-white/10 bg-white/[0.02] p-4">
+        <button type="button" onClick={toggleDomain} aria-pressed={customDomain} className="flex w-full items-center gap-3 text-left">
+          <span className={"flex h-11 w-11 shrink-0 items-center justify-center rounded-lg " + (customDomain ? "bg-amber-300 text-black" : "bg-white/[0.06] text-white/45")}><Globe2 className="h-5 w-5" /></span>
+          <span className="min-w-0 flex-1"><span className="block text-sm font-bold">Custom Domain</span><span className="mt-0.5 block text-xs leading-5 text-white/40">We purchase, connect, renew, and manage one standard .com domain.</span></span>
+          <span className="shrink-0 text-right"><span className="block text-lg font-bold">+$10</span><span className="block text-[10px] text-white/35">per month</span></span>
+        </button>
+
+        {customDomain && (
+          <div className="mt-4 border-t border-white/10 pt-4">
+            <form onSubmit={searchDomain} className="flex gap-2">
+              <label className="min-w-0 flex-1"><span className="sr-only">Custom domain</span>
+                <input className={inputClass} value={domainInput} onChange={(event) => { setDomainInput(event.target.value); setDomainState("idle"); setDomainMessage(""); }}
+                  inputMode="url" autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="playername.com" />
+              </label>
+              <button type="submit" disabled={!domainInput.trim() || domainState === "checking"} aria-label="Search domain" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-white text-black disabled:opacity-40">
+                {domainState === "checking" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5" />}
+              </button>
+            </form>
+            <p className="mt-2 text-[11px] leading-4 text-white/30">Premium and unusually expensive domains are not included.</p>
+            {domainMessage && <p aria-live="polite" className={"mt-3 flex items-start gap-2 text-xs leading-5 " + (domainState === "available" ? "text-emerald-300" : domainState === "unavailable" ? "text-amber-200" : "text-red-300")}>{domainState === "available" && <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />}{domainMessage}</p>}
           </div>
-          <form onSubmit={searchDomain} className="mt-4 flex gap-2">
-            <label className="min-w-0 flex-1">
-              <span className="sr-only">Custom domain</span>
-              <input
-                className={inputClass}
-                value={domainInput}
-                onChange={(event) => {
-                  setDomainInput(event.target.value);
-                  setDomainState("idle");
-                  setDomainMessage("");
-                }}
-                inputMode="url"
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                placeholder="playername.com"
-              />
-            </label>
-            <button
-              type="submit"
-              disabled={!domainInput.trim() || domainState === "checking"}
-              aria-label="Search domain"
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-white text-black disabled:opacity-40"
-            >
-              {domainState === "checking" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5" />}
-            </button>
-          </form>
-          {domainMessage && (
-            <p
-              aria-live="polite"
-              className={`mt-3 flex items-start gap-2 text-xs leading-5 ${
-                domainState === "available"
-                  ? "text-emerald-300"
-                  : domainState === "unavailable"
-                    ? "text-amber-200"
-                    : "text-red-300"
-              }`}
-            >
-              {domainState === "available" && <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />}
-              {domainMessage}
-            </p>
-          )}
-        </section>
-      )}
+        )}
+      </section>
 
       <div id="launch-checkout" className="scroll-mt-40 pt-6">
         <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-sm font-semibold">{selectedPlan.name}</p>
-            <p className="mt-0.5 text-xs text-white/35">
-              ${selectedPlan.price} billed monthly{plan === "premium" && domainState === "available" ? ` with ${domainInput}` : ""}
-            </p>
-          </div>
+          <div><p className="text-sm font-semibold">{selectedPlan.name}{customDomain ? " + Custom Domain" : ""}</p><p className="mt-0.5 text-xs text-white/35">{total === 0 ? "Free hosting—no card required" : "$" + total + " billed monthly"}</p></div>
           <ShieldCheck className="h-5 w-5 text-white/35" />
         </div>
-        <button
-          type="button"
-          onClick={startCheckout}
-          disabled={checkoutState === "loading"}
-          className="mt-4 inline-flex min-h-13 w-full items-center justify-center gap-2 rounded-lg bg-white px-4 text-sm font-bold text-black transition hover:bg-white/85 disabled:opacity-60"
-        >
-          {checkoutState === "loading" ? (
-            <>
-              <LoaderCircle className="h-4 w-4 animate-spin" />
-              Opening checkout
-            </>
-          ) : (
-            <>
-              Continue to secure checkout
-              <ArrowRight className="h-4 w-4" />
-            </>
-          )}
+        <button type="button" onClick={startLaunch} disabled={checkoutState === "loading" || !slugReady || !domainReady}
+          className="mt-4 inline-flex min-h-13 w-full items-center justify-center gap-2 rounded-lg bg-white px-4 text-sm font-bold text-black transition hover:bg-white/85 disabled:opacity-60">
+          {checkoutState === "loading" ? <><LoaderCircle className="h-4 w-4 animate-spin" />{total === 0 ? "Publishing" : "Opening checkout"}</> : <>{total === 0 ? "Publish free" : "Continue to secure checkout"}<ArrowRight className="h-4 w-4" /></>}
         </button>
         <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-[11px] text-white/30">
-          <LockKeyhole className="h-3.5 w-3.5" />
-          Payment is completed securely with Stripe
+          {total === 0 ? <>No payment information required</> : <><LockKeyhole className="h-3.5 w-3.5" />Payment is completed securely with Stripe</>}
         </p>
-        {checkoutState === "error" && (
-          <p aria-live="polite" className="mt-3 rounded-lg border border-red-400/20 bg-red-400/[0.08] p-3 text-xs leading-5 text-red-200">
-            {checkoutMessage}
-          </p>
-        )}
+        {checkoutState === "error" && <p aria-live="polite" className="mt-3 rounded-lg border border-red-400/20 bg-red-400/[0.08] p-3 text-xs leading-5 text-red-200">{checkoutMessage}</p>}
       </div>
     </div>
   );

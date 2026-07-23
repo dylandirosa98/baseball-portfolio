@@ -198,9 +198,9 @@ function uploadToMux(uploadUrl: string, file: File, onProgress: (progress: numbe
 
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) resolve();
-      else reject(new Error(`Mux upload failed (${xhr.status})`));
+      else reject(new Error(`Video upload failed (${xhr.status})`));
     };
-    xhr.onerror = () => reject(new Error("Mux upload failed"));
+    xhr.onerror = () => reject(new Error("Video upload failed"));
     xhr.send(file);
   });
 }
@@ -211,14 +211,14 @@ async function waitForMuxPlayback(uploadId: string): Promise<UploadStatusRespons
     const data = (await response.json()) as UploadStatusResponse;
 
     if (!response.ok || data.error) {
-      throw new Error(data.error || "Unable to check Mux upload");
+      throw new Error(data.error || "Unable to check video processing");
     }
 
     if (data.playbackId && data.url) return data;
     await new Promise((resolve) => setTimeout(resolve, 2000));
   }
 
-  throw new Error("Mux is still processing this video. Try again in a minute.");
+  throw new Error("Diamond Profile is still processing this video. Try again in a minute.");
 }
 
 export default function MediaVideoUpload({ item, slug, inputClass, labelClass, onChange, allowAudioChoice = true }: MediaVideoUploadProps) {
@@ -231,9 +231,13 @@ export default function MediaVideoUpload({ item, slug, inputClass, labelClass, o
   const thumbnailUrl = item.thumbnailUrl || (playbackId ? getMuxThumbnailUrl(playbackId) : "");
 
   async function handleFile(file: File) {
+    if (file.size > 2 * 1024 * 1024 * 1024) {
+      setStatus("Choose a video smaller than 2 GB.");
+      return;
+    }
     const includeAudio = allowAudioChoice
       ? window.confirm(
-          "Include audio in this Mux upload?\n\nOK = keep original audio\nCancel = permanently remove audio before upload"
+          "Include audio in this video upload?\n\nOK = keep original audio\nCancel = permanently remove audio before upload"
         )
       : true;
 
@@ -255,16 +259,16 @@ export default function MediaVideoUpload({ item, slug, inputClass, labelClass, o
       const response = await fetch("/api/mux/uploads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: item.title || uploadFile.name, slug }),
+        body: JSON.stringify({ title: item.title || uploadFile.name, slug, fileSize: uploadFile.size }),
       });
       const upload = await response.json();
 
       if (!response.ok || upload.error) {
-        throw new Error(upload.error || "Unable to create Mux upload");
+        throw new Error(upload.error || "Unable to create video upload");
       }
 
       onChange({ ...item, muxUploadId: upload.uploadId });
-      setStatus("Uploading to Mux...");
+      setStatus("Uploading video...");
       await uploadToMux(upload.uploadUrl, uploadFile, setProgress);
 
       setStatus("Processing video...");
@@ -290,7 +294,7 @@ export default function MediaVideoUpload({ item, slug, inputClass, labelClass, o
   return (
     <div className="space-y-3">
       <div>
-        <label className={labelClass}>Upload Video to Mux</label>
+        <label className={labelClass}>Upload Video to Diamond Profile</label>
         <div
           onClick={() => !uploading && fileRef.current?.click()}
           className={`relative w-full aspect-video rounded-lg overflow-hidden bg-white/5 border border-white/10 transition-colors group ${
@@ -333,7 +337,7 @@ export default function MediaVideoUpload({ item, slug, inputClass, labelClass, o
           className="hidden"
         />
         {allowAudioChoice && (
-          <p className="mt-1 text-[10px] text-white/25">After choosing a file, you can keep or permanently remove audio before it uploads to Mux.</p>
+          <p className="mt-1 text-[10px] text-white/25">After choosing a file, you can keep or permanently remove audio before it uploads to Diamond Profile.</p>
         )}
       </div>
 
@@ -343,7 +347,7 @@ export default function MediaVideoUpload({ item, slug, inputClass, labelClass, o
           className={inputClass}
           value={item.url}
           onChange={(e) => onChange({ ...item, url: e.target.value, muxPlaybackId: undefined, muxAssetId: undefined, muxUploadId: undefined, thumbnailUrl: undefined })}
-          placeholder="YouTube, Vimeo, Google Drive, or Mux playback link"
+          placeholder="YouTube, Vimeo, Google Drive, or hosted video link"
         />
       </div>
     </div>
