@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { MarketingDesignShowcase } from "@/components/MarketingDesignShowcase";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -200,7 +201,7 @@ export default function HomePage() {
       </section>
 
       <section id="product" className="mx-auto max-w-[1360px] px-4 pb-28 pt-24 sm:px-7 sm:pt-32">
-        <p className="text-xl font-semibold text-[#ff4c59]">For {"{players}"}</p>
+        <p className="text-xl font-semibold text-[#ff4c59]">For players</p>
         <h2 className="mt-5 max-w-5xl text-5xl font-bold leading-[.98] tracking-[-0.055em] sm:text-7xl">Everything a coach needs. In one place.</h2>
 
         <div className="mt-16 rounded-[2rem] border border-[#721620] bg-[#21070c] p-6 sm:p-10 lg:p-14">
@@ -264,36 +265,15 @@ export default function HomePage() {
       </section>
 
       <section id="designs" className="mx-auto max-w-[1360px] px-4 py-24 sm:px-7 sm:py-32">
-        <p className="text-xl font-semibold text-[#ff4c59]">For {"{first impressions}"}</p>
+        <p className="text-xl font-semibold text-[#ff4c59]">For first impressions</p>
         <h2 className="mt-5 max-w-5xl text-5xl font-bold leading-[.98] tracking-[-0.055em] sm:text-7xl">Same player. Three distinct ways to show up.</h2>
         <p className="mt-7 max-w-2xl text-lg leading-8 text-white/55">Every design uses the same information. Switch the presentation without rebuilding the content.</p>
 
-        <div className="mt-14 rounded-[2rem] border border-[#721620] bg-[#21070c] p-5 sm:p-8">
-          <div className="mx-auto mb-7 flex w-fit rounded-full border border-white/25 p-1 text-xs sm:text-sm">
-            <span className="rounded-full border border-[#ff4c59] px-4 py-2">Cinematic</span><span className="px-4 py-2 text-white/55">Clubhouse</span><span className="px-4 py-2 text-white/55">Prospect Card</span>
-          </div>
-          <div className="grid gap-4 lg:grid-cols-3">
-            {[
-              { name: "Cinematic", number: "01", tone: "from-[#8c121f] via-[#2c0a10] to-[#08090b]", copy: "Big image, bold name, immediate impact." },
-              { name: "Clubhouse", number: "02", tone: "from-[#4d1018] via-[#180d12] to-[#08090b]", copy: "Editorial split layout with structured details." },
-              { name: "Prospect Card", number: "03", tone: "from-[#70121c] via-[#260d13] to-[#08090b]", copy: "Centered identity with a modern player-card feel." },
-            ].map((design) => (
-              <article key={design.name} className="group overflow-hidden rounded-2xl border border-[#a02a35] bg-[#3b0c14]">
-                <div className={`relative flex aspect-[4/5] items-end overflow-hidden bg-gradient-to-br p-5 ${design.tone}`}>
-                  <span className="absolute right-3 top-3 text-[6rem] font-light leading-none text-white/10">{design.number}</span>
-                  <div className="absolute bottom-0 right-[-10%] h-[82%] w-[82%] transition duration-500 group-hover:scale-105"><Image src="/images/player-placeholder.png" alt="" fill className="object-contain object-bottom opacity-75" sizes="(min-width:1024px) 380px, 90vw" /></div>
-                  <div className="relative z-10"><p className="text-xs font-semibold text-[#ff7a7a]">Design {design.number}</p><h3 className="mt-2 text-3xl font-bold">{design.name}</h3></div>
-                </div>
-                <div className="flex min-h-24 items-center justify-between gap-4 p-5"><p className="text-sm leading-6 text-white/58">{design.copy}</p><Palette className="h-4 w-4 shrink-0 text-white/30" /></div>
-              </article>
-            ))}
-          </div>
-          <Link href="/builder" className="mt-8 inline-flex items-center gap-2 text-sm font-semibold">Try every design free <ArrowRight className="h-4 w-4" /></Link>
-        </div>
+        <MarketingDesignShowcase />
       </section>
 
       <section className="mx-auto max-w-[1360px] px-4 py-24 sm:px-7 sm:py-32">
-        <p className="text-xl font-semibold text-[#ff4c59]">From {"{blank page}"} to shared link</p>
+        <p className="text-xl font-semibold text-[#ff4c59]">From blank page to shared link</p>
         <h2 className="mt-5 max-w-5xl text-5xl font-bold leading-[.98] tracking-[-0.055em] sm:text-7xl">Built for momentum, not setup fatigue.</h2>
         <div className="mt-14 grid gap-px overflow-hidden rounded-[2rem] border border-white/15 bg-white/15 md:grid-cols-3">
           {[
