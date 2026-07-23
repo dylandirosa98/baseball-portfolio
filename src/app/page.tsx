@@ -77,7 +77,19 @@ function ProductWindow() {
             </span>
             <span className="h-2 w-2 rounded-full bg-[#e01010]" />
           </div>
-          <div className="relative min-h-[430px] overflow-hidden sm:min-h-[515px]">
+          <div className="flex justify-center bg-[#090a0c] p-3 sm:p-6">
+            <Image
+              src="/images/marketing-design-1.png"
+              alt="Design 1 player profile preview"
+              width={390}
+              height={844}
+              priority
+              unoptimized
+              className="h-auto max-h-[620px] w-auto max-w-full rounded-xl object-contain shadow-[0_24px_80px_rgba(0,0,0,.55)]"
+              sizes="(max-width: 640px) 90vw, 390px"
+            />
+          </div>
+          <div className="hidden">
             <Image src="/images/baseball-hero-no-people.png" alt="" fill priority className="object-cover object-center opacity-55" sizes="(min-width:1024px) 780px, 94vw" />
             <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,7,9,.98)_0%,rgba(5,7,9,.76)_50%,rgba(5,7,9,.18)_100%)]" />
             <div className="absolute inset-y-0 left-0 z-20 hidden w-10 flex-col items-center gap-4 border-r border-white/10 bg-[#0c0e11]/85 py-5 sm:flex">
