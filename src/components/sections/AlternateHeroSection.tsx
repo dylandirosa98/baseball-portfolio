@@ -117,14 +117,17 @@ export default function AlternateHeroSection({ player, design }: AlternateHeroSe
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
           >
-            <Image
-              src={playerImageOrFallback(player.heroImageUrl)}
-              alt={`${player.firstName} ${player.lastName}`}
-              fill
-              priority
-              className={"split-hero-player object-contain object-bottom" + (defaultHeroImage ? " default-player-image" : "")}
-              style={{ transform: "scale(" + heroImageScale / 100 + ")", transformOrigin: "bottom center" }}
-            />
+            <div className="split-hero-player-frame">
+              <Image
+                src={playerImageOrFallback(player.heroImageUrl)}
+                alt={`${player.firstName} ${player.lastName}`}
+                fill
+                priority
+                sizes="(max-width: 767px) 100vw, 40vw"
+                className={"split-hero-player object-contain object-bottom" + (defaultHeroImage ? " default-player-image" : "")}
+                style={{ transform: "scale(" + heroImageScale / 100 + ")", transformOrigin: "bottom center" }}
+              />
+            </div>
             <span className="split-hero-number" style={{ color: player.numberColor || player.themeColor }}>
               {player.number}
             </span>
@@ -146,7 +149,8 @@ export default function AlternateHeroSection({ player, design }: AlternateHeroSe
               alt={`${player.firstName} ${player.lastName}`}
               fill
               priority
-              className={"object-contain object-bottom" + (defaultHeroImage ? " default-player-image" : "")}
+              sizes="(max-width: 767px) 100vw, 600px"
+              className={"card-hero-player object-contain object-bottom" + (defaultHeroImage ? " default-player-image" : "")}
               style={{ transform: "scale(" + heroImageScale / 100 + ")", transformOrigin: "bottom center" }}
             />
           </motion.div>

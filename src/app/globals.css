@@ -1778,3 +1778,60 @@ body {
 .player-light footer a.text-white\/35:hover {
   color: #111111 !important;
 }
+
+/* Audited hero sizing: keep builder containers and published viewports in sync. */
+.profile-design-2 .alternate-hero--split {
+  min-height: min(720px, 78svh);
+}
+
+.split-hero-player-frame {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: min(72%, 640px);
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 8%, #000 94%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0%, #000 8%, #000 94%, transparent 100%);
+}
+
+/* Fade Design 3's image pixels, not a rectangular overlay painted over its stage. */
+.profile-design-3 .card-hero-image {
+  width: min(64vw, 600px);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 7%, #000 93%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0%, #000 7%, #000 93%, transparent 100%);
+}
+
+.profile-design-3 .card-hero-image::after {
+  display: none;
+  content: none;
+}
+
+.card-hero-player {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 4%, #000 78%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 4%, #000 78%, transparent 100%);
+}
+
+@container player-profile (max-width: 767px) {
+  /* Width-based heights render identically in the 390px builder preview and on a 390px phone. */
+  .profile-design-1 .design-one-hero {
+    min-height: clamp(36rem, 150cqw, 40rem);
+  }
+
+  .profile-design-2 .alternate-hero--split {
+    min-height: 0;
+    grid-template-rows: clamp(30rem, 138cqw, 34rem) auto;
+  }
+
+  .profile-design-2 .split-hero-player-frame {
+    inset: 0;
+    width: 100%;
+  }
+
+  .profile-design-3 .alternate-hero--card {
+    min-height: clamp(50rem, 215cqw, 54rem);
+  }
+
+  .profile-design-3 .card-hero-image {
+    inset: 3rem 0 11rem;
+    width: min(100cqw, 540px);
+  }
+}

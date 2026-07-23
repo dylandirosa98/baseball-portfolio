@@ -78,6 +78,7 @@ export default function HeroSection({ player }: HeroSectionProps) {
               src={playerImageOrFallback(player.heroImageUrl)}
               alt={`${player.firstName} ${player.lastName}`}
               fill
+              sizes="(max-width: 767px) 100vw, 580px"
               className={"object-contain object-bottom" + (defaultHeroImage ? " default-player-image" : "")}
               style={{ transform: "scale(" + heroImageScale / 100 + ")", transformOrigin: "bottom center" }}
               priority
