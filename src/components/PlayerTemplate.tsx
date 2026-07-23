@@ -61,6 +61,7 @@ export default function PlayerTemplate({ player }: PlayerTemplateProps) {
     { label: "Throws", value: player.throws },
     { label: "Height", value: player.height },
     { label: "Weight", value: player.weight },
+    { label: "Birth Year", value: player.birthYear || null },
   ].filter((item) => item.value);
 
   const hasStats = Object.values(player.currentStats ?? {}).some((value) => Number(value) !== 0);
@@ -102,7 +103,7 @@ export default function PlayerTemplate({ player }: PlayerTemplateProps) {
       {/* Player info strip */}
       {infoItems.length > 0 && (
         <div className="profile-info-strip px-5 pt-4 pb-1 lg:max-w-4xl lg:mx-auto">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-0">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-0">
             {infoItems.map((item) => (
               <div key={item.label} className="flex justify-between items-baseline gap-3 border-b border-white/5 py-2 min-w-0">
                 <span className="text-[11px] text-white/30 uppercase tracking-wider flex-shrink-0">
