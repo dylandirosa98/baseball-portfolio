@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import NextImage from "next/image";
 import {
@@ -14,10 +14,13 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleUserRound,
+  Cloud,
   Eye,
+  ExternalLink,
   Globe2,
   Image as ImageIcon,
   Link2,
+  LayoutDashboard,
   LoaderCircle,
   LockKeyhole,
   Monitor,
@@ -44,6 +47,7 @@ import { isStandardComDomain, normalizeManagedDomain } from "@/lib/domain-name";
 
 const STORAGE_KEY = "diamond_builder_draft_v1";
 const ACTIVE_STEP_KEY = "diamond_builder_active_step_v1";
+const SCOPED_STORAGE_PREFIX = "diamond_builder_account_draft_v1:";
 
 const emptyStats: PlayerStats = {
   gamesPlayed: 0,
@@ -104,6 +108,12 @@ const defaultDraft: Player = {
 
 type StepId = "info" | "photos" | "style" | "stats" | "content" | "links" | "review";
 
+type StoredDraft = {
+  draft: Player;
+  savedAt: number;
+  pending?: boolean;
+};
+
 type Step = {
   id: StepId;
   label: string;
@@ -120,6 +130,33 @@ const steps: Step[] = [
   { id: "links", label: "Links", caption: "Socials and documents", icon: Link2 },
   { id: "review", label: "Launch", caption: "Choose a plan and go live", icon: Rocket },
 ];
+
+function isStepId(value: string | null): value is StepId {
+  return steps.some((step) => step.id === value);
+}
+
+function safeReturnPath(value: string | null) {
+  return value?.startsWith("/") && !value.startsWith("//") ? value : "/dashboard";
+}
+
+function readStoredDraft(key: string): StoredDraft | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as unknown;
+    if (parsed && typeof parsed === "object" && "draft" in parsed) {
+      const stored = parsed as { draft?: unknown; savedAt?: unknown; pending?: unknown };
+      return {
+        draft: mergeDraft(stored.draft),
+        savedAt: typeof stored.savedAt === "number" ? stored.savedAt : 0,
+        pending: stored.pending === true,
+      };
+    }
+    return { draft: mergeDraft(parsed), savedAt: 0 };
+  } catch {
+    return null;
+  }
+}
 
 const platformOptions: SocialLink["platform"][] = [
   "instagram",
@@ -210,6 +247,15 @@ function completionFor(step: StepId, draft: Player) {
   }
 }
 
+function stepIsReady(step: StepId, draft: Player) {
+  if (step === "info") return Boolean(draft.firstName && draft.lastName && draft.team && draft.league);
+  if (step === "photos") return Boolean(draft.heroImageUrl && !draft.heroImageUrl.includes("placeholder"));
+  if (step === "style") return Boolean(draft.design && draft.themeColor);
+  if (step === "stats") return draft.showStatsBar === false || Object.values(draft.currentStats).some((value) => Number(value) > 0);
+  if (step === "review") return Boolean(draft.firstName && draft.lastName && draft.slug && draft.slug !== "preview");
+  return completionFor(step, draft) > 0;
+}
+
 function moveItem<T>(items: T[], from: number, to: number) {
   if (to < 0 || to >= items.length) return items;
   const next = [...items];
@@ -249,61 +295,145 @@ export default function BuilderPage() {
   const [loaded, setLoaded] = useState(false);
   const [saveState, setSaveState] = useState<"saving" | "saved" | "error">("saved");
   const [cloudEnabled, setCloudEnabled] = useState(false);
+  const [hasCloudProfile, setHasCloudProfile] = useState(false);
+  const [isPublished, setIsPublished] = useState(false);
+  const [storageKey, setStorageKey] = useState(STORAGE_KEY);
+  const [returnPath, setReturnPath] = useState("/dashboard");
+  const [editMode, setEditMode] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const [leaving, setLeaving] = useState(false);
   const [checkoutResult, setCheckoutResult] = useState<"success" | "canceled" | null>(null);
+  const autosaveTimeoutRef = useRef<number | null>(null);
+  const saveRequestRef = useRef(0);
+  const draftVersionRef = useRef(0);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      const savedStep = localStorage.getItem(ACTIVE_STEP_KEY) as StepId | null;
+    let active = true;
+
+    async function hydrate() {
+      const legacyDraft = readStoredDraft(STORAGE_KEY);
+      const savedStep = localStorage.getItem(ACTIVE_STEP_KEY);
       const checkout = new URLSearchParams(window.location.search).get("checkout");
+      const params = new URLSearchParams(window.location.search);
+      const requestedStep = params.get("step");
+      const requestedEditMode = params.get("mode") === "edit";
+      const requestedReturnPath = safeReturnPath(params.get("returnTo"));
+      let nextDraft = legacyDraft?.draft ?? defaultDraft;
+      let nextStorageKey = STORAGE_KEY;
+      let nextDirty = Boolean(legacyDraft && legacyDraft.savedAt > 0);
 
-      if (saved) setDraft(mergeDraft(JSON.parse(saved)));
-      if (savedStep && steps.some((step) => step.id === savedStep)) setActiveStep(savedStep);
+      try {
+        const response = await fetch("/api/portfolio");
+        if (response.ok) {
+          const data = await response.json() as { player?: PlayerWithMeta | null; userId?: string };
+          const scopedKey = data.userId ? SCOPED_STORAGE_PREFIX + data.userId : STORAGE_KEY;
+          const scopedDraft = readStoredDraft(scopedKey);
+          const cloudDraft = data.player ? mergeDraft(data.player) : null;
+          const cloudUpdatedAt = data.player?.updatedAt ? Date.parse(data.player.updatedAt) : 0;
+          const localIsNewer = Boolean(scopedDraft?.pending && scopedDraft.savedAt > cloudUpdatedAt);
+          const recoveredDraft = localIsNewer && data.player ? mergeDraft({
+            ...scopedDraft!.draft,
+            id: data.player.id,
+            isPublished: data.player.isPublished,
+            billingTier: data.player.billingTier,
+            hasCustomDomain: data.player.hasCustomDomain,
+            muxUploadCount: data.player.muxUploadCount,
+            createdAt: data.player.createdAt,
+            updatedAt: data.player.updatedAt,
+          }) : null;
 
-      void fetch("/api/portfolio")
-        .then(async (response) => {
-          if (!response.ok) return;
-          const data = await response.json();
+          nextStorageKey = scopedKey;
+          nextDraft = recoveredDraft ?? cloudDraft ?? scopedDraft?.draft ?? legacyDraft?.draft ?? defaultDraft;
+          nextDirty = localIsNewer || (!cloudDraft && Boolean(scopedDraft ?? legacyDraft));
           setCloudEnabled(true);
-          if (data.player && !saved) setDraft(mergeDraft(data.player));
-        })
-        .catch(() => undefined);
+          setHasCloudProfile(Boolean(data.player));
+          setIsPublished(Boolean(data.player?.isPublished));
+          if (cloudDraft && !localIsNewer) setLastSavedAt(cloudUpdatedAt || Date.now());
+        }
+      } catch {
+        setSaveMessage("Working offline. Changes are still saved on this device.");
+      }
+
+      if (!active) return;
+      setStorageKey(nextStorageKey);
+      setDraft(nextDraft);
+      setDirty(nextDirty);
+      setEditMode(requestedEditMode);
+      setReturnPath(requestedReturnPath);
+      if (isStepId(requestedStep)) setActiveStep(requestedStep);
+      else if (isStepId(savedStep)) setActiveStep(savedStep);
       if (checkout === "success" || checkout === "canceled") {
         setCheckoutResult(checkout);
-        setActiveStep("review");
+        if (!isStepId(requestedStep)) setActiveStep("review");
       }
-    } catch {
-      setDraft(defaultDraft);
-    } finally {
       setLoaded(true);
     }
+
+    void hydrate();
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
     if (!loaded) return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+    const localSavedAt = dirty ? Date.now() : lastSavedAt ?? Date.now();
+    localStorage.setItem(storageKey, JSON.stringify({ draft, savedAt: localSavedAt, pending: cloudEnabled && dirty } satisfies StoredDraft));
     localStorage.setItem(ACTIVE_STEP_KEY, activeStep);
     if (!cloudEnabled) setSaveState("saved");
-  }, [draft, activeStep, loaded, cloudEnabled]);
+  }, [draft, activeStep, loaded, cloudEnabled, storageKey, dirty, lastSavedAt]);
+
+  const persistDraft = useCallback(async (nextDraft: Player) => {
+    localStorage.setItem(storageKey, JSON.stringify({ draft: nextDraft, savedAt: Date.now(), pending: cloudEnabled } satisfies StoredDraft));
+    if (!cloudEnabled) {
+      setSaveState("saved");
+      setSaveMessage("Saved on this device. Sign in to sync your changes.");
+      return true;
+    }
+    if (!nextDraft.firstName.trim() || !nextDraft.lastName.trim()) {
+      setSaveState("error");
+      setSaveMessage("Add a first and last name before saving to your account.");
+      return false;
+    }
+
+    const requestId = ++saveRequestRef.current;
+    const version = draftVersionRef.current;
+    setSaveState("saving");
+    setSaveMessage("");
+    try {
+      const response = await fetch("/api/portfolio", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(nextDraft),
+      });
+      const data = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) throw new Error(data.error || "Your changes could not be saved.");
+      if (requestId === saveRequestRef.current) {
+        const savedAt = Date.now();
+        setSaveState("saved");
+        setHasCloudProfile(true);
+        setLastSavedAt(savedAt);
+        localStorage.setItem(storageKey, JSON.stringify({ draft: nextDraft, savedAt, pending: false } satisfies StoredDraft));
+        if (version === draftVersionRef.current) setDirty(false);
+      }
+      return true;
+    } catch (error) {
+      if (requestId === saveRequestRef.current) {
+        setSaveState("error");
+        setSaveMessage(error instanceof Error ? error.message : "Your changes could not be saved.");
+      }
+      return false;
+    }
+  }, [cloudEnabled, storageKey]);
 
   useEffect(() => {
-    if (!loaded || !cloudEnabled || !draft.firstName.trim() || !draft.lastName.trim()) return;
+    if (!loaded || !cloudEnabled || !dirty || !draft.firstName.trim() || !draft.lastName.trim()) return;
     setSaveState("saving");
-    const timeout = window.setTimeout(async () => {
-      try {
-        const response = await fetch("/api/portfolio", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(draft),
-        });
-        if (!response.ok) throw new Error("Cloud save failed");
-        setSaveState("saved");
-      } catch {
-        setSaveState("error");
-      }
-    }, 900);
-    return () => window.clearTimeout(timeout);
-  }, [draft, loaded, cloudEnabled]);
+    autosaveTimeoutRef.current = window.setTimeout(() => void persistDraft(draft), 900);
+    return () => {
+      if (autosaveTimeoutRef.current !== null) window.clearTimeout(autosaveTimeoutRef.current);
+    };
+  }, [draft, loaded, cloudEnabled, dirty, persistDraft]);
 
   useEffect(() => {
     if (!previewOpen) return;
@@ -318,9 +448,31 @@ export default function BuilderPage() {
   const currentStep = steps[activeIndex];
   const previewPlayer = useMemo<Player>(() => ({ ...draft, slug: draft.slug || "preview" }), [draft]);
   const completion = profileCompletion(draft);
+  const editingExisting = editMode || hasCloudProfile;
+  const liveHref = isPublished && draft.slug && draft.slug !== "preview" ? `/${draft.slug}` : null;
 
-  function update(updates: Partial<Player>) {
+  const update = useCallback((updates: Partial<Player>) => {
+    draftVersionRef.current += 1;
+    setDirty(true);
+    setSaveMessage("");
     setDraft((prev) => ({ ...prev, ...updates }));
+  }, []);
+
+  async function saveNow() {
+    if (autosaveTimeoutRef.current !== null) window.clearTimeout(autosaveTimeoutRef.current);
+    return persistDraft(draft);
+  }
+
+  async function saveAndReturn() {
+    setLeaving(true);
+    const saved = dirty ? await saveNow() : true;
+    if (saved) {
+      const destination = new URL(returnPath, window.location.origin);
+      if (cloudEnabled && hasCloudProfile) destination.searchParams.set("updated", "1");
+      window.location.assign(destination.pathname + destination.search);
+      return;
+    }
+    setLeaving(false);
   }
 
   function goToStep(step: StepId) {
@@ -349,42 +501,78 @@ export default function BuilderPage() {
       <div className="sticky top-0 z-40 border-b border-white/10 bg-[#090909]/95 backdrop-blur-xl">
         <header className="px-3 pt-[env(safe-area-inset-top)] sm:px-4">
           <div className="mx-auto flex h-16 max-w-[1480px] items-center gap-2">
-            <Link
-              href="/"
-              aria-label="Back to home"
-              title="Back to home"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-white/55 transition hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
+            {editingExisting ? (
+              <button
+                type="button"
+                onClick={() => void saveAndReturn()}
+                disabled={leaving}
+                aria-label="Save and return to dashboard"
+                title="Save and return to dashboard"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-white/55 transition hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 disabled:opacity-50"
+              >
+                {leaving ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <LayoutDashboard className="h-5 w-5" />}
+              </button>
+            ) : (
+              <Link
+                href="/"
+                aria-label="Back to home"
+                title="Back to home"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-white/55 transition hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Link>
+            )}
 
-            <NextImage src="/diamond-profile-logo.png" alt="" width={48} height={48} className="h-9 w-9 shrink-0 object-contain" />
+            <NextImage src="/diamond-profile-logo.png" alt="" width={48} height={48} className="hidden h-9 w-9 shrink-0 object-contain min-[430px]:block" />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[11px] font-semibold text-white/40">Diamond Profile</p>
+              <p className="truncate text-[11px] font-semibold text-white/40">{editingExisting ? "Website editor" : "Diamond Profile"}</p>
               <h1 className="truncate text-base font-bold sm:text-lg">
-                {draft.firstName ? `${draft.firstName}'s portfolio` : "Build your portfolio"}
+                {editingExisting ? `Editing ${draft.firstName || "your"} profile` : draft.firstName ? `${draft.firstName}'s portfolio` : "Build your portfolio"}
               </h1>
             </div>
 
-            <div aria-live="polite" className="hidden min-w-20 items-center justify-end gap-1.5 text-xs text-white/40 sm:flex">
+            <div aria-live="polite" className="hidden min-w-24 items-center justify-end gap-1.5 text-xs text-white/40 md:flex">
               {saveState === "saving" ? (
                 <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
               ) : saveState === "error" ? (
                 <X className="h-3.5 w-3.5 text-red-300" />
               ) : (
-                <Save className="h-3.5 w-3.5" />
+                <Cloud className="h-3.5 w-3.5" />
               )}
-              {saveState === "saving" ? "Saving" : saveState === "error" ? "Save failed" : cloudEnabled ? "Saved to account" : "Saved on device"}
+              {saveState === "saving" ? "Saving changes" : saveState === "error" ? "Save failed" : dirty ? "Changes pending" : cloudEnabled ? "All changes saved" : "Saved on device"}
             </div>
 
-            <Link
-              href={cloudEnabled ? "/account" : "/auth"}
-              aria-label={cloudEnabled ? "Open account" : "Sign in to sync"}
-              title={cloudEnabled ? "Account" : "Sign in to sync"}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-white/10 text-white/55 transition hover:bg-white/[0.06] hover:text-white"
-            >
-              <CircleUserRound className="h-5 w-5" />
-            </Link>
+            {editingExisting ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => void saveNow()}
+                  disabled={saveState === "saving" || !dirty}
+                  className="hidden h-11 items-center justify-center gap-2 rounded-lg border border-white/10 px-3 text-sm font-semibold text-white/70 transition hover:bg-white/[0.06] hover:text-white disabled:opacity-40 sm:flex"
+                >
+                  {saveState === "saving" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  Save
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void saveAndReturn()}
+                  disabled={leaving}
+                  className="flex h-11 items-center justify-center gap-2 rounded-lg bg-white px-3 text-sm font-bold text-black transition hover:bg-white/85 disabled:opacity-60"
+                >
+                  {leaving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                  <span className="hidden min-[390px]:inline">Done</span>
+                </button>
+              </>
+            ) : (
+              <Link
+                href={cloudEnabled ? "/dashboard" : "/auth"}
+                aria-label={cloudEnabled ? "Open dashboard" : "Sign in to sync"}
+                title={cloudEnabled ? "Dashboard" : "Sign in to sync"}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-white/10 text-white/55 transition hover:bg-white/[0.06] hover:text-white"
+              >
+                <CircleUserRound className="h-5 w-5" />
+              </Link>
+            )}
 
             <button
               type="button"
@@ -416,7 +604,7 @@ export default function BuilderPage() {
             {steps.map((step, index) => {
               const Icon = step.icon;
               const active = step.id === activeStep;
-              const hasContent = completionFor(step.id, draft) > 0;
+              const ready = stepIsReady(step.id, draft);
               return (
                 <button
                   key={step.id}
@@ -431,7 +619,7 @@ export default function BuilderPage() {
                       : "text-white/35 hover:bg-white/[0.06] hover:text-white"
                   }`}
                 >
-                  {hasContent && !active && index < activeIndex ? (
+                  {ready && !active && index < activeIndex ? (
                     <Check className="h-4 w-4 text-emerald-400" />
                   ) : (
                     <Icon className="h-4 w-4" />
@@ -444,6 +632,32 @@ export default function BuilderPage() {
       </div>
 
       <div className="mx-auto grid max-w-[1480px] gap-5 px-3 py-4 sm:px-4 lg:grid-cols-[410px_minmax(0,1fr)] lg:py-5">
+        {editingExisting && (
+          <section className="flex flex-col justify-between gap-4 rounded-lg border border-red-500/20 bg-[linear-gradient(110deg,rgba(229,22,42,.13),rgba(255,255,255,.025))] p-4 sm:flex-row sm:items-center lg:col-span-2">
+            <div className="flex min-w-0 items-start gap-3">
+              <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${isPublished ? "bg-emerald-400" : "bg-amber-300"}`} />
+              <div className="min-w-0">
+                <p className="font-bold">{isPublished ? "Editing your live website" : "Editing your saved draft"}</p>
+                <p className="mt-1 text-xs leading-5 text-white/40">Make one change or update the full profile. Autosave keeps this connected to your dashboard.</p>
+              </div>
+            </div>
+            <div className="flex shrink-0 flex-wrap gap-2">
+              {liveHref && (
+                <Link href={liveHref} target="_blank" className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-white/10 px-3 text-xs font-bold text-white/65 hover:bg-white/5 hover:text-white">
+                  View live site <ExternalLink className="h-3.5 w-3.5" />
+                </Link>
+              )}
+              <button type="button" onClick={() => void saveAndReturn()} disabled={leaving} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-white px-3 text-xs font-bold text-black disabled:opacity-60">
+                Save & return <LayoutDashboard className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </section>
+        )}
+        {saveMessage && (
+          <div className={`rounded-lg border px-4 py-3 text-xs leading-5 lg:col-span-2 ${saveState === "error" ? "border-red-400/25 bg-red-400/10 text-red-100" : "border-white/10 bg-white/[0.035] text-white/55"}`} role="status">
+            {saveMessage}
+          </div>
+        )}
         <aside className="min-w-0 space-y-4">
           <nav className="hidden rounded-lg border border-white/10 bg-white/[0.025] p-2 lg:block" aria-label="Builder steps">
             <div className="mb-2 flex items-center justify-between px-2 py-1.5">
@@ -456,7 +670,7 @@ export default function BuilderPage() {
             {steps.map((step, index) => {
               const Icon = step.icon;
               const active = step.id === activeStep;
-              const hasContent = completionFor(step.id, draft) > 0;
+              const ready = stepIsReady(step.id, draft);
               return (
                 <button
                   key={step.id}
@@ -470,7 +684,7 @@ export default function BuilderPage() {
                   <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
                     active ? "bg-black text-white" : "bg-white/[0.06] text-white/45"
                   }`}>
-                    {hasContent && !active && index < activeIndex ? (
+                    {ready && !active && index < activeIndex ? (
                       <Check className="h-4 w-4 text-emerald-400" />
                     ) : (
                       <Icon className="h-4 w-4" />
@@ -493,6 +707,7 @@ export default function BuilderPage() {
               step={activeStep}
               update={update}
               checkoutResult={checkoutResult}
+              isPublished={isPublished}
             />
             <div className="mt-6 hidden items-center justify-between gap-3 border-t border-white/10 pt-4 lg:flex">
               <button type="button" onClick={previousStep} disabled={activeIndex === 0} className={buttonClass}>
@@ -510,7 +725,7 @@ export default function BuilderPage() {
                 </button>
               ) : (
                 <button type="button" onClick={scrollToCheckout} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-white px-4 text-sm font-bold text-black transition hover:bg-white/85">
-                  Checkout
+                  {isPublished ? "Publishing & plans" : "Launch options"}
                   <ArrowRight className="h-4 w-4" />
                 </button>
               )}
@@ -580,7 +795,7 @@ export default function BuilderPage() {
             onClick={activeIndex < steps.length - 1 ? nextStep : scrollToCheckout}
             className="inline-flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg bg-white px-4 text-sm font-bold text-black"
           >
-            <span className="truncate">{activeIndex < steps.length - 1 ? "Continue" : "Checkout"}</span>
+            <span className="truncate">{activeIndex < steps.length - 1 ? "Continue" : isPublished ? "Publishing" : "Launch"}</span>
             <ArrowRight className="h-4 w-4 shrink-0" />
           </button>
         </div>
@@ -612,14 +827,14 @@ export default function BuilderPage() {
   );
 }
 
-function StepEditor({ draft, step, update, checkoutResult }: { draft: Player; step: StepId; update: (updates: Partial<Player>) => void; checkoutResult: "success" | "canceled" | null }) {
+function StepEditor({ draft, step, update, checkoutResult, isPublished }: { draft: Player; step: StepId; update: (updates: Partial<Player>) => void; checkoutResult: "success" | "canceled" | null; isPublished: boolean }) {
   if (step === "info") return <InfoStep draft={draft} update={update} />;
   if (step === "photos") return <PhotosStep draft={draft} update={update} />;
   if (step === "style") return <StyleStep draft={draft} update={update} />;
   if (step === "stats") return <StatsStep draft={draft} update={update} />;
   if (step === "content") return <ContentStep draft={draft} update={update} />;
   if (step === "links") return <LinksStep draft={draft} update={update} />;
-  return <ReviewStep draft={draft} update={update} checkoutResult={checkoutResult} />;
+  return <ReviewStep draft={draft} update={update} checkoutResult={checkoutResult} isPublished={isPublished} />;
 }
 
 function SectionHeader({ title, body }: { title: string; body: string }) {
@@ -1849,19 +2064,21 @@ function suggestedDomain(draft: Player) {
   return name ? name + ".com" : "";
 }
 
-function ReviewStep({ draft, update, checkoutResult }: {
+function ReviewStep({ draft, update, checkoutResult, isPublished }: {
   draft: Player;
   update: (updates: Partial<Player>) => void;
   checkoutResult: "success" | "canceled" | null;
+  isPublished: boolean;
 }) {
   const cloudDraft = draft as Player & Partial<PlayerWithMeta>;
   const currentTier = cloudDraft.billingTier === "pro" || cloudDraft.billingTier === "elite" ? cloudDraft.billingTier : "free";
+  const currentHasCustomDomain = Boolean(cloudDraft.hasCustomDomain);
   const [tier, setTier] = useState<BillingTier>(currentTier);
   const initialSlug = draft.slug && draft.slug !== "preview" ? normalizeProfileSlug(draft.slug) : uploadSlugFor(draft);
   const [profileSlug, setProfileSlug] = useState(initialSlug);
   const [slugState, setSlugState] = useState<SlugState>("idle");
   const [slugMessage, setSlugMessage] = useState("");
-  const [customDomain, setCustomDomain] = useState(Boolean(cloudDraft.hasCustomDomain));
+  const [customDomain, setCustomDomain] = useState(currentHasCustomDomain);
   const [domainInput, setDomainInput] = useState(draft.customDomain || suggestedDomain(draft));
   const [domainState, setDomainState] = useState<DomainState>(draft.customDomain ? "available" : "idle");
   const [domainMessage, setDomainMessage] = useState("");
@@ -1872,11 +2089,11 @@ function ReviewStep({ draft, update, checkoutResult }: {
     const savedTier = localStorage.getItem("diamond_builder_tier");
     const savedDomain = localStorage.getItem("diamond_builder_custom_domain");
     const frame = requestAnimationFrame(() => {
-      if (currentTier === "free" && (savedTier === "free" || savedTier === "pro" || savedTier === "elite")) setTier(savedTier);
-      if (!cloudDraft.hasCustomDomain && savedDomain === "true") setCustomDomain(true);
+      if ((!isPublished || checkoutResult === "canceled") && currentTier === "free" && (savedTier === "free" || savedTier === "pro" || savedTier === "elite")) setTier(savedTier);
+      if (!currentHasCustomDomain && savedDomain === "true" && (!isPublished || checkoutResult === "canceled")) setCustomDomain(true);
     });
     return () => cancelAnimationFrame(frame);
-  }, [cloudDraft.hasCustomDomain, currentTier]);
+  }, [checkoutResult, currentHasCustomDomain, currentTier, isPublished]);
 
   useEffect(() => {
     const slug = normalizeProfileSlug(profileSlug);
@@ -1900,6 +2117,7 @@ function ReviewStep({ draft, update, checkoutResult }: {
         } else if (data.available) {
           setSlugState("available");
           setSlugMessage(PROFILE_DOMAIN + "/" + data.slug + " is available.");
+          if (draft.slug !== data.slug) update({ slug: data.slug });
         } else {
           setSlugState("unavailable");
           setSlugMessage(data.error || "That address is already taken.");
@@ -1916,7 +2134,7 @@ function ReviewStep({ draft, update, checkoutResult }: {
       controller.abort();
       window.clearTimeout(timeout);
     };
-  }, [profileSlug]);
+  }, [draft.slug, profileSlug, update]);
 
   const checks = [
     ["Player name", !!draft.firstName && !!draft.lastName],
@@ -1927,8 +2145,11 @@ function ReviewStep({ draft, update, checkoutResult }: {
   ] as const;
   const readyCount = checks.filter(([, done]) => done).length;
   const selectedPlan = launchPlans.find((item) => item.id === tier) ?? launchPlans[0];
-  const total = selectedPlan.price + (customDomain ? 10 : 0);
-  const domainReady = !customDomain || domainState === "available";
+  const needsTierCheckout = currentTier === "free" && tier !== "free";
+  const needsDomainCheckout = customDomain && !currentHasCustomDomain;
+  const needsCheckout = needsTierCheckout || needsDomainCheckout;
+  const checkoutTotal = (needsTierCheckout ? selectedPlan.price : 0) + (needsDomainCheckout ? 10 : 0);
+  const domainReady = currentHasCustomDomain || !customDomain || domainState === "available";
   const slugReady = slugState === "available";
 
   function chooseTier(nextTier: BillingTier) {
@@ -1938,6 +2159,7 @@ function ReviewStep({ draft, update, checkoutResult }: {
   }
 
   function toggleDomain() {
+    if (currentHasCustomDomain) return;
     const next = !customDomain;
     setCustomDomain(next);
     localStorage.setItem("diamond_builder_custom_domain", String(next));
@@ -1979,7 +2201,6 @@ function ReviewStep({ draft, update, checkoutResult }: {
 
   async function saveDraft() {
     const launchDraft = { ...draft, slug: profileSlug };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(launchDraft));
     const response = await fetch("/api/portfolio", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -2012,12 +2233,19 @@ function ReviewStep({ draft, update, checkoutResult }: {
       const saved = await saveDraft();
       if (!saved) return;
 
-      const publishResponse = await fetch("/api/portfolio/publish", { method: "POST" });
-      const publishData = await publishResponse.json();
-      if (!publishResponse.ok) throw new Error(publishData.error || "Your portfolio could not be published.");
+      if (isPublished && !needsCheckout) {
+        window.location.assign("/dashboard?updated=1");
+        return;
+      }
 
-      if (tier === "free" && !customDomain) {
-        window.location.assign("/dashboard");
+      if (!isPublished) {
+        const publishResponse = await fetch("/api/portfolio/publish", { method: "POST" });
+        const publishData = await publishResponse.json();
+        if (!publishResponse.ok) throw new Error(publishData.error || "Your portfolio could not be published.");
+      }
+
+      if (!needsCheckout) {
+        window.location.assign(isPublished ? "/dashboard?updated=1" : "/dashboard?published=1");
         return;
       }
 
@@ -2047,7 +2275,10 @@ function ReviewStep({ draft, update, checkoutResult }: {
 
   return (
     <div>
-      <SectionHeader title="Publish your portfolio" body="Start free, then add professional video, analytics, or a managed custom domain whenever you need them." />
+      <SectionHeader
+        title={isPublished ? "Publishing & plans" : "Publish your portfolio"}
+        body={isPublished ? "Your website is live. Keep the current plan, save profile changes, or add services when you need them." : "Start free, then add professional video, analytics, or a managed custom domain whenever you need them."}
+      />
 
       <section className="mb-6 rounded-lg border border-white/10 bg-white/[0.02] p-4">
         <div className="flex items-start gap-3">
@@ -2119,18 +2350,21 @@ function ReviewStep({ draft, update, checkoutResult }: {
       <div>
         <h3 className="text-sm font-semibold text-white/85">Choose a base plan</h3>
         <p className="mt-1 text-xs text-white/35">Free stays free. Paid plans bill monthly and can be canceled from your account.</p>
+        {currentTier !== "free" && <p className="mt-2 text-xs leading-5 text-amber-100/55">Your current paid plan stays selected here. Use Manage billing in the dashboard to switch or cancel it.</p>}
         <div className="mt-3 grid gap-3">
           {launchPlans.map((item) => {
             const selected = item.id === tier;
+            const locked = currentTier !== "free" && item.id !== currentTier;
             return (
-              <button key={item.id} type="button" onClick={() => chooseTier(item.id)} aria-pressed={selected}
-                className={"w-full rounded-lg border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 " + (selected ? "border-white/55 bg-white/[0.07]" : "border-white/10 bg-white/[0.02] hover:border-white/25")}>
+              <button key={item.id} type="button" onClick={() => chooseTier(item.id)} aria-pressed={selected} disabled={locked}
+                className={"w-full rounded-lg border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 disabled:cursor-not-allowed disabled:opacity-35 " + (selected ? "border-white/55 bg-white/[0.07]" : "border-white/10 bg-white/[0.02] hover:border-white/25")}>
                 <span className="flex items-start justify-between gap-4">
                   <span>
                     <span className="flex items-center gap-2">
                       <span className="text-base font-bold">{item.name}</span>
                       {item.id === "pro" && <span className="rounded-md bg-emerald-300 px-2 py-1 text-[10px] font-bold text-black">POPULAR</span>}
                       {item.id === "elite" && <span className="rounded-md bg-amber-300 px-2 py-1 text-[10px] font-bold text-black">UNLIMITED</span>}
+                      {item.id === currentTier && isPublished && <span className="rounded-md border border-white/15 px-2 py-1 text-[10px] font-bold text-white/55">CURRENT</span>}
                     </span>
                     <span className="mt-1 block text-sm leading-5 text-white/45">{item.description}</span>
                   </span>
@@ -2146,13 +2380,15 @@ function ReviewStep({ draft, update, checkoutResult }: {
       </div>
 
       <section className="mt-6 rounded-lg border border-white/10 bg-white/[0.02] p-4">
-        <button type="button" onClick={toggleDomain} aria-pressed={customDomain} className="flex w-full items-center gap-3 text-left">
+        <button type="button" onClick={toggleDomain} aria-pressed={customDomain} disabled={currentHasCustomDomain} className="flex w-full items-center gap-3 text-left disabled:cursor-default">
           <span className={"flex h-11 w-11 shrink-0 items-center justify-center rounded-lg " + (customDomain ? "bg-amber-300 text-black" : "bg-white/[0.06] text-white/45")}><Globe2 className="h-5 w-5" /></span>
           <span className="min-w-0 flex-1"><span className="block text-sm font-bold">Custom Domain</span><span className="mt-0.5 block text-xs leading-5 text-white/40">We purchase, connect, renew, and manage one standard .com domain.</span></span>
           <span className="shrink-0 text-right"><span className="block text-lg font-bold">+$10</span><span className="block text-[10px] text-white/35">per month</span></span>
         </button>
 
-        {customDomain && (
+        {currentHasCustomDomain && <p className="mt-3 text-xs leading-5 text-white/35">Your managed domain is active. Subscription changes are handled from Manage billing in the dashboard.</p>}
+
+        {customDomain && !currentHasCustomDomain && (
           <div className="mt-4 border-t border-white/10 pt-4">
             <form onSubmit={searchDomain} className="flex gap-2">
               <label className="min-w-0 flex-1"><span className="sr-only">Custom domain</span>
@@ -2171,15 +2407,15 @@ function ReviewStep({ draft, update, checkoutResult }: {
 
       <div id="launch-checkout" className="scroll-mt-40 pt-6">
         <div className="flex items-center justify-between gap-4">
-          <div><p className="text-sm font-semibold">{selectedPlan.name}{customDomain ? " + Custom Domain" : ""}</p><p className="mt-0.5 text-xs text-white/35">{total === 0 ? "Free hosting—no card required" : "$" + total + " billed monthly"}</p></div>
+          <div><p className="text-sm font-semibold">{selectedPlan.name}{customDomain ? " + Custom Domain" : ""}</p><p className="mt-0.5 text-xs text-white/35">{needsCheckout ? `$${checkoutTotal} in new monthly services` : isPublished ? "No new charge—save your latest changes" : "No card required for free hosting"}</p></div>
           <ShieldCheck className="h-5 w-5 text-white/35" />
         </div>
         <button type="button" onClick={startLaunch} disabled={checkoutState === "loading" || !slugReady || !domainReady}
           className="mt-4 inline-flex min-h-13 w-full items-center justify-center gap-2 rounded-lg bg-white px-4 text-sm font-bold text-black transition hover:bg-white/85 disabled:opacity-60">
-          {checkoutState === "loading" ? <><LoaderCircle className="h-4 w-4 animate-spin" />{total === 0 ? "Publishing" : "Opening checkout"}</> : <>{total === 0 ? "Publish free" : "Continue to secure checkout"}<ArrowRight className="h-4 w-4" /></>}
+          {checkoutState === "loading" ? <><LoaderCircle className="h-4 w-4 animate-spin" />{needsCheckout ? "Opening checkout" : "Saving changes"}</> : <>{needsCheckout ? "Continue to secure checkout" : isPublished ? "Save changes and return" : currentTier === "free" ? "Publish free" : "Publish profile"}<ArrowRight className="h-4 w-4" /></>}
         </button>
         <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-[11px] text-white/30">
-          {total === 0 ? <>No payment information required</> : <><LockKeyhole className="h-3.5 w-3.5" />Payment is completed securely with Stripe</>}
+          {needsCheckout ? <><LockKeyhole className="h-3.5 w-3.5" />Payment is completed securely with Stripe</> : isPublished ? <>Your live website stays online while changes save</> : <>No payment information required</>}
         </p>
         {checkoutState === "error" && <p aria-live="polite" className="mt-3 rounded-lg border border-red-400/20 bg-red-400/[0.08] p-3 text-xs leading-5 text-red-200">{checkoutMessage}</p>}
       </div>

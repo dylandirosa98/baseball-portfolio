@@ -23,7 +23,10 @@ export async function GET() {
     .maybeSingle();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ player: data ? rowToPlayer(data as PlayerRow) : null });
+  return NextResponse.json({
+    player: data ? rowToPlayer(data as PlayerRow) : null,
+    userId: user.id,
+  });
 }
 
 export async function PUT(request: NextRequest) {

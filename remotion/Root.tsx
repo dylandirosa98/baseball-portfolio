@@ -1,5 +1,5 @@
 import { Composition } from "remotion";
-import { MarketingVideo } from "./MarketingVideo";
+import { MarketingVideo, marketingVideoConfig } from "./MarketingVideo";
 
 export function RemotionRoot() {
   return (
@@ -7,8 +7,8 @@ export function RemotionRoot() {
       <Composition
         id="DiamondProfile-Landscape"
         component={MarketingVideo}
-        durationInFrames={450}
-        fps={30}
+        durationInFrames={marketingVideoConfig.durationInFrames}
+        fps={marketingVideoConfig.fps}
         width={1920}
         height={1080}
         defaultProps={{ vertical: false }}
@@ -16,8 +16,8 @@ export function RemotionRoot() {
       <Composition
         id="DiamondProfile-Vertical"
         component={MarketingVideo}
-        durationInFrames={450}
-        fps={30}
+        durationInFrames={marketingVideoConfig.durationInFrames}
+        fps={marketingVideoConfig.fps}
         width={1080}
         height={1920}
         defaultProps={{ vertical: true }}

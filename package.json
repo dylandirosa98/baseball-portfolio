@@ -9,8 +9,9 @@
     "start": "next start",
     "lint": "eslint",
     "remotion:studio": "remotion studio remotion/index.ts",
-    "video:landscape": "remotion render remotion/index.ts DiamondProfile-Landscape out/diamond-landscape.mp4",
-    "video:vertical": "remotion render remotion/index.ts DiamondProfile-Vertical out/diamond-vertical.mp4"
+    "video:music": "node scripts/generate-marketing-music.mjs",
+    "video:landscape": "remotion render remotion/index.ts DiamondProfile-Landscape out/diamond-landscape.mp4 --codec=h264 --crf=16 --audio-bitrate=256k",
+    "video:vertical": "remotion render remotion/index.ts DiamondProfile-Vertical out/diamond-vertical.mp4 --codec=h264 --crf=16 --audio-bitrate=256k"
   },
   "dependencies": {
     "@ffmpeg/core": "^0.12.10",
