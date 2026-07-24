@@ -82,10 +82,10 @@ function ProductWindow() {
           </div>
           <div className="flex justify-center bg-[#090a0c] p-3 sm:p-6">
             <Image
-              src="/images/marketing-design-1.png"
-              alt="Design 1 player profile preview"
-              width={390}
-              height={844}
+              src="/images/marketing-hero.png"
+              alt="Diamond Profile baseball player website example"
+              width={391}
+              height={845}
               priority
               unoptimized
               className="h-auto max-h-[620px] w-auto max-w-full rounded-xl object-contain shadow-[0_24px_80px_rgba(0,0,0,.55)]"

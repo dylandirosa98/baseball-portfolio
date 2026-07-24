@@ -65,8 +65,8 @@ export function MarketingDesignShowcase() {
           <Image
             src={selected.image}
             alt={selected.alt}
-            width={390}
-            height={844}
+            width={391}
+            height={845}
             unoptimized
             className="h-auto max-h-[720px] w-auto max-w-full rounded-xl object-contain shadow-[0_24px_80px_rgba(0,0,0,.55)]"
             sizes="(max-width: 640px) 90vw, 390px"
