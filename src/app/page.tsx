@@ -68,7 +68,7 @@ const testimonials = [
 
 function ProductWindow() {
   return (
-    <div className="relative mx-auto w-full max-w-[780px]">
+    <div className="relative mx-auto w-full max-w-[430px]">
       <div className="absolute -inset-12 rounded-full bg-[#e01010]/25 blur-[90px]" />
       <div className="relative overflow-hidden rounded-[1.35rem] border border-white/20 bg-[#100204] p-1.5 shadow-[0_45px_120px_rgba(0,0,0,.65)] sm:p-2">
         <div className="overflow-hidden rounded-[1rem] border border-white/10 bg-[#090b0e]">
@@ -76,20 +76,20 @@ function ProductWindow() {
             <Image src="/diamond-profile-logo.png" alt="" width={24} height={24} className="h-6 w-6 object-contain" />
             <strong className="hidden text-[11px] text-white/75 sm:block">Diamond Profile</strong>
             <span className="min-w-0 flex-1 truncate rounded-md border border-white/5 bg-black/25 px-3 py-1.5 text-center font-mono text-[8px] text-white/35">
-              diamondprofile.app/diamond-profile
+              diamondprofile.app/ethan-cole
             </span>
             <span className="h-2 w-2 rounded-full bg-[#e01010]" />
           </div>
-          <div className="flex justify-center bg-[#090a0c] p-3 sm:p-6">
+          <div className="bg-[#090a0c]">
             <Image
               src="/images/marketing-hero.png"
               alt="Diamond Profile baseball player website example"
-              width={391}
-              height={845}
+              width={389}
+              height={844}
               priority
               unoptimized
-              className="h-auto max-h-[620px] w-auto max-w-full rounded-xl object-contain shadow-[0_24px_80px_rgba(0,0,0,.55)]"
-              sizes="(max-width: 640px) 90vw, 390px"
+              className="h-auto w-full object-contain"
+              sizes="(max-width: 480px) 94vw, 418px"
             />
           </div>
           <div className="relative hidden">

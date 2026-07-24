@@ -9,7 +9,7 @@ const designs = [
   {
     id: "design-1",
     name: "Cinematic",
-    number: "01",
+    number: "1",
     copy: "Big image, bold name, immediate impact.",
     image: "/images/marketing-design-1.png",
     alt: "Design 1 player profile preview",
@@ -17,7 +17,7 @@ const designs = [
   {
     id: "design-2",
     name: "Clubhouse",
-    number: "02",
+    number: "2",
     copy: "An editorial split layout with structured details.",
     image: "/images/marketing-design-2.png",
     alt: "Design 2 player profile preview",
@@ -25,7 +25,7 @@ const designs = [
   {
     id: "design-3",
     name: "Prospect Card",
-    number: "03",
+    number: "3",
     copy: "A centered identity with a modern player-card feel.",
     image: "/images/marketing-design-3.png",
     alt: "Design 3 player profile preview",
@@ -65,8 +65,8 @@ export function MarketingDesignShowcase() {
           <Image
             src={selected.image}
             alt={selected.alt}
-            width={391}
-            height={845}
+            width={389}
+            height={844}
             unoptimized
             className="h-auto max-h-[720px] w-auto max-w-full rounded-xl object-contain shadow-[0_24px_80px_rgba(0,0,0,.55)]"
             sizes="(max-width: 640px) 90vw, 390px"
