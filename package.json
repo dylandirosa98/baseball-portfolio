@@ -11,7 +11,17 @@
     "remotion:studio": "remotion studio remotion/index.ts",
     "video:music": "node scripts/generate-marketing-music.mjs",
     "video:landscape": "remotion render remotion/index.ts DiamondProfile-Landscape out/diamond-landscape.mp4 --codec=h264 --crf=16 --audio-bitrate=256k",
-    "video:vertical": "remotion render remotion/index.ts DiamondProfile-Vertical out/diamond-vertical.mp4 --codec=h264 --crf=16 --audio-bitrate=256k"
+    "video:vertical": "remotion render remotion/index.ts DiamondProfile-Vertical out/diamond-vertical.mp4 --codec=h264 --crf=16 --audio-bitrate=256k",
+    "video:ads": "npm run video:ad:first-look && npm run video:ad:one-link && npm run video:ad:three-designs",
+    "video:ad:first-look": "remotion render remotion/index.ts MetaAd-FirstLook out/meta-ad-first-look.mp4 --codec=h264 --crf=16 --audio-bitrate=256k",
+    "video:ad:one-link": "remotion render remotion/index.ts MetaAd-OneLink out/meta-ad-one-link.mp4 --codec=h264 --crf=16 --audio-bitrate=256k",
+    "video:ad:three-designs": "remotion render remotion/index.ts MetaAd-ThreeDesigns out/meta-ad-three-designs.mp4 --codec=h264 --crf=16 --audio-bitrate=256k",
+    "video:education": "npm run video:education:first-message && npm run video:education:profile-audit && npm run video:education:film-checklist && npm run video:education:stay-current && npm run video:education:easy-to-share",
+    "video:education:first-message": "remotion render remotion/index.ts Recruiting-FirstMessage out/recruiting-first-message.mp4 --codec=h264 --crf=16 --audio-bitrate=256k",
+    "video:education:profile-audit": "remotion render remotion/index.ts Recruiting-ProfileAudit out/recruiting-profile-audit.mp4 --codec=h264 --crf=16 --audio-bitrate=256k",
+    "video:education:film-checklist": "remotion render remotion/index.ts Recruiting-FilmChecklist out/recruiting-film-checklist.mp4 --codec=h264 --crf=16 --audio-bitrate=256k",
+    "video:education:stay-current": "remotion render remotion/index.ts Recruiting-StayCurrent out/recruiting-stay-current.mp4 --codec=h264 --crf=16 --audio-bitrate=256k",
+    "video:education:easy-to-share": "remotion render remotion/index.ts Recruiting-EasyToShare out/recruiting-easy-to-share.mp4 --codec=h264 --crf=16 --audio-bitrate=256k"
   },
   "dependencies": {
     "@ffmpeg/core": "^0.12.10",
