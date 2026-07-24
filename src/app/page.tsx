@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { MarketingDesignShowcase } from "@/components/MarketingDesignShowcase";
+import SignedInMenu from "@/components/SignedInMenu";
+import { createClient } from "@/lib/supabase/server";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -10,6 +12,7 @@ import {
   CirclePlay,
   Film,
   Globe2,
+  LayoutDashboard,
   LayoutTemplate,
   Link2,
   Palette,
@@ -89,7 +92,7 @@ function ProductWindow() {
               sizes="(max-width: 640px) 90vw, 390px"
             />
           </div>
-          <div className="hidden">
+          <div className="relative hidden">
             <Image src="/images/baseball-hero-no-people.png" alt="" fill priority className="object-cover object-center opacity-55" sizes="(min-width:1024px) 780px, 94vw" />
             <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,7,9,.98)_0%,rgba(5,7,9,.76)_50%,rgba(5,7,9,.18)_100%)]" />
             <div className="absolute inset-y-0 left-0 z-20 hidden w-10 flex-col items-center gap-4 border-r border-white/10 bg-[#0c0e11]/85 py-5 sm:flex">
@@ -149,7 +152,15 @@ function DashboardWindow() {
   );
 }
 
-export default function HomePage() {
+export default async function HomePage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const userName = typeof user?.user_metadata?.full_name === "string"
+    ? user.user_metadata.full_name
+    : typeof user?.user_metadata?.name === "string"
+      ? user.user_metadata.name
+      : undefined;
+
   return (
     <main className="overflow-hidden bg-black text-white">
       <header className="relative z-50 border-b border-white/10 bg-[#18181b]">
@@ -165,9 +176,13 @@ export default function HomePage() {
             <a href="#pricing" className="transition hover:text-white">Pricing</a>
           </nav>
           <div className="flex items-center gap-2">
-            <Link href="/auth" className="hidden min-h-11 items-center px-3 text-sm text-white/65 hover:text-white sm:flex">Sign in</Link>
-            <Link href="/builder" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-4 text-sm font-bold text-black transition hover:bg-white/85 sm:px-5">
-              Build yours <ArrowRight className="h-4 w-4" />
+            {user?.email ? (
+              <SignedInMenu email={user.email} name={userName} />
+            ) : (
+              <Link href="/auth?mode=signin" className="hidden min-h-11 items-center px-3 text-sm text-white/65 hover:text-white sm:flex">Sign in</Link>
+            )}
+            <Link href={user ? "/dashboard" : "/builder"} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-3 text-sm font-bold text-black transition hover:bg-white/85 sm:px-5">
+              {user ? <><LayoutDashboard className="h-4 w-4" /><span className="hidden sm:inline">Dashboard</span></> : <>Build yours <ArrowRight className="h-4 w-4" /></>}
             </Link>
           </div>
         </div>
@@ -185,8 +200,8 @@ export default function HomePage() {
           </p>
           <div className="mt-14 sm:mt-16"><ProductWindow /></div>
           <div className="mt-16 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Link href="/builder" className="inline-flex min-h-13 min-w-52 items-center justify-center gap-2 rounded-full bg-white px-7 text-lg font-medium text-black transition hover:scale-[1.02]">
-              Start free <ArrowRight className="h-4 w-4" />
+            <Link href={user ? "/dashboard" : "/builder"} className="inline-flex min-h-13 min-w-52 items-center justify-center gap-2 rounded-full bg-white px-7 text-lg font-medium text-black transition hover:scale-[1.02]">
+              {user ? "Open your dashboard" : "Start free"} <ArrowRight className="h-4 w-4" />
             </Link>
             <a href="#product" className="inline-flex min-h-13 min-w-52 items-center justify-center gap-2 rounded-full border border-white/35 px-7 text-lg text-white transition hover:bg-white/10">
               <CirclePlay className="h-4 w-4" /> Explore the product
@@ -206,7 +221,7 @@ export default function HomePage() {
             <p className="text-sm font-semibold text-[#b0000d]">The player command center</p>
             <h2 className="mt-5 max-w-lg text-4xl font-bold leading-[1.03] tracking-[-0.045em] sm:text-5xl">Launch once. Keep improving every week.</h2>
             <p className="mt-6 max-w-lg text-lg leading-7 text-[#111218]/70">Manage the live site, monitor plan usage, check domain status, handle billing, and see paid analytics from one dashboard.</p>
-            <Link href="/auth" className="mt-8 inline-flex min-h-13 items-center gap-2 rounded-full bg-[#18181b] px-7 font-medium text-white">Open your dashboard <ArrowRight className="h-4 w-4" /></Link>
+            <Link href={user ? "/dashboard" : "/auth?mode=signin"} className="mt-8 inline-flex min-h-13 items-center gap-2 rounded-full bg-[#18181b] px-7 font-medium text-white">Open your dashboard <ArrowRight className="h-4 w-4" /></Link>
           </div>
           <DashboardWindow />
         </div>
@@ -308,7 +323,7 @@ export default function HomePage() {
             <p className="text-sm font-semibold text-[#b0000d]">A dashboard after launch</p>
             <h2 className="mt-5 max-w-xl text-4xl font-bold leading-[1.03] tracking-[-0.045em] sm:text-5xl">Publishing is the start, not the finish.</h2>
             <p className="mt-6 max-w-lg text-lg leading-7 text-[#111218]/70">Keep the site current, manage billing and domain status, monitor limits, and—on paid plans—see what coaches view and play.</p>
-            <Link href="/auth" className="mt-8 inline-flex min-h-13 items-center gap-2 rounded-full bg-[#18181b] px-7 font-medium text-white">Go to dashboard <ArrowRight className="h-4 w-4" /></Link>
+            <Link href={user ? "/dashboard" : "/auth?mode=signin"} className="mt-8 inline-flex min-h-13 items-center gap-2 rounded-full bg-[#18181b] px-7 font-medium text-white">Go to dashboard <ArrowRight className="h-4 w-4" /></Link>
           </div>
           <DashboardWindow />
         </div>
@@ -348,7 +363,7 @@ export default function HomePage() {
                 <ul className="mt-8 flex-1 space-y-3 border-t border-white/10 pt-7 text-sm text-white/68">
                   {plan.features.map((feature) => <li key={feature} className="flex gap-3"><Check className="mt-0.5 h-4 w-4 shrink-0 text-[#ff5965]" />{feature}</li>)}
                 </ul>
-                <Link href="/builder" className={`mt-8 inline-flex min-h-12 items-center justify-center gap-2 rounded-full font-medium ${featured ? "bg-white text-black" : "border border-white/35 text-white"}`}>Start building <ArrowRight className="h-4 w-4" /></Link>
+                <Link href={user ? "/dashboard" : "/builder"} className={`mt-8 inline-flex min-h-12 items-center justify-center gap-2 rounded-full font-medium ${featured ? "bg-white text-black" : "border border-white/35 text-white"}`}>{user ? "Open dashboard" : "Start building"} <ArrowRight className="h-4 w-4" /></Link>
               </article>
             );
           })}
@@ -365,7 +380,7 @@ export default function HomePage() {
           <div className="relative mx-auto max-w-5xl">
             <p className="text-sm font-semibold text-white/65">The next coach is one link away</p>
             <h2 className="mt-6 text-5xl font-bold leading-[.95] tracking-[-0.055em] sm:text-7xl">Make the introduction count.</h2>
-            <Link href="/builder" className="mt-10 inline-flex min-h-14 items-center justify-center gap-2 rounded-full bg-white px-8 text-lg font-medium text-black">Build your profile <ArrowUpRight className="h-5 w-5" /></Link>
+            <Link href={user ? "/dashboard" : "/builder"} className="mt-10 inline-flex min-h-14 items-center justify-center gap-2 rounded-full bg-white px-8 text-lg font-medium text-black">{user ? "Manage your profile" : "Build your profile"} <ArrowUpRight className="h-5 w-5" /></Link>
           </div>
         </div>
       </section>
@@ -374,7 +389,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-[1360px] px-4 sm:px-7">
           <div className="flex flex-col justify-between gap-8 border-b border-white/10 pb-9 sm:flex-row sm:items-center">
             <Link href="/" className="flex items-center gap-3"><Image src="/diamond-profile-logo.png" alt="" width={52} height={52} className="h-11 w-11 object-contain" /><span className="font-black">DIAMOND PROFILE</span></Link>
-            <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm text-white/45"><Link href="/builder">Builder</Link><Link href="/auth">Sign in</Link><Link href="/dashboard">Dashboard</Link><a href="#pricing">Pricing</a><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link><Link href="/support">Support</Link></div>
+            <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm text-white/45"><Link href="/builder">Builder</Link>{user ? <Link href="/dashboard">Your account</Link> : <Link href="/auth?mode=signin">Sign in</Link>}<Link href="/dashboard">Dashboard</Link><a href="#pricing">Pricing</a><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link><Link href="/support">Support</Link></div>
           </div>
           <div className="flex flex-col justify-between gap-3 pt-6 text-[10px] uppercase tracking-[0.16em] text-white/25 sm:flex-row"><span>© {new Date().getFullYear()} Diamond Profile</span><span className="flex items-center gap-2"><ShieldCheck className="h-3 w-3" /> Built for the player journey</span></div>
         </div>
