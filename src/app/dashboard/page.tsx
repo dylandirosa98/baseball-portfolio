@@ -30,6 +30,7 @@ import { rowToPlayer, type PlayerRow } from "@/lib/supabase/transforms";
 import AnalyticsChart from "@/components/dashboard/AnalyticsChart";
 import CopyProfileLink from "@/components/dashboard/CopyProfileLink";
 import DeleteAccountButton from "@/components/DeleteAccountButton";
+import MetaCheckoutConversion from "@/components/MetaCheckoutConversion";
 
 export const dynamic = "force-dynamic";
 
@@ -65,7 +66,7 @@ function adminAllowed(email?: string) {
 }
 
 type DashboardPageProps = {
-  searchParams: Promise<{ updated?: string; published?: string; checkout?: string }>;
+  searchParams: Promise<{ updated?: string; published?: string; checkout?: string; session_id?: string }>;
 };
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
@@ -118,6 +119,21 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const profileViews = analyticsPoints.reduce((sum, item) => sum + item.views, 0);
   const videoPlays = analyticsPoints.reduce((sum, item) => sum + item.videoPlays, 0);
   const activeDays = analyticsPoints.filter((item) => item.views > 0 || item.videoPlays > 0).length;
+  let checkoutConversion: { sessionId: string; value: number; currency: string } | null = null;
+  if (query.checkout === "success" && query.session_id?.startsWith("cs_")) {
+    try {
+      const session = await getStripe().checkout.sessions.retrieve(query.session_id);
+      if (session.client_reference_id === user.id && session.payment_status === "paid" && session.amount_total !== null && session.currency) {
+        checkoutConversion = {
+          sessionId: session.id,
+          value: session.amount_total / 100,
+          currency: session.currency,
+        };
+      }
+    } catch {
+      checkoutConversion = null;
+    }
+  }
 
   async function manageBilling() {
     "use server";
@@ -178,6 +194,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   return (
     <main className="min-h-screen bg-[#080d12] text-white">
+      {checkoutConversion && <MetaCheckoutConversion {...checkoutConversion} />}
       <div className="mx-auto flex min-h-screen max-w-[1600px]">
         <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-white/10 bg-[#09131c] px-5 py-6 lg:flex">
           <Link href="/" className="flex items-center gap-3">

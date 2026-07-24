@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, LoaderCircle, ShieldCheck } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { getMarketingAttribution, trackMetaEvent } from "@/lib/marketing-attribution";
 
 function GoogleIcon() {
   return (
@@ -44,14 +45,18 @@ function AuthContent() {
     const supabase = createClient();
 
     if (mode === "signup") {
+      trackMetaEvent("Lead", { content_name: "Diamond Profile signup" });
+      const callback = new URL("/auth/callback", window.location.origin);
+      callback.searchParams.set("next", "/builder?signup=1");
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback?next=/builder`,
+          emailRedirectTo: callback.toString(),
           data: {
             adult_account_holder: true,
             terms_accepted_at: new Date().toISOString(),
+            marketing_attribution: getMarketingAttribution(),
           },
         },
       });
@@ -77,7 +82,7 @@ function AuthContent() {
       }
     }
 
-    router.push(mode === "signup" ? "/builder" : "/dashboard");
+    router.push(mode === "signup" ? "/builder?signup=1" : "/dashboard");
     router.refresh();
   }
 
@@ -91,8 +96,11 @@ function AuthContent() {
     setState("loading");
     setLoadingAction("google");
     setMessage("");
+    if (mode === "signup") {
+      trackMetaEvent("Lead", { content_name: "Diamond Profile Google signup" });
+    }
     const callback = new URL("/auth/callback", window.location.origin);
-    callback.searchParams.set("next", mode === "signup" ? "/builder" : "/dashboard");
+    callback.searchParams.set("next", mode === "signup" ? "/builder?signup=1" : "/dashboard");
     callback.searchParams.set("consent", "adult");
 
     const { error } = await createClient().auth.signInWithOAuth({

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { trackMetaEvent } from "@/lib/marketing-attribution";
 
 type PortfolioMetric = "profile_view" | "video_play";
 
@@ -15,6 +16,11 @@ async function record(slug: string, metric: PortfolioMetric) {
 
 export default function PortfolioAnalytics({ slug }: { slug: string }) {
   useEffect(() => {
+    trackMetaEvent("ViewContent", {
+      content_ids: [slug],
+      content_name: "Diamond Profile player website",
+      content_type: "product",
+    });
     const day = new Date().toISOString().slice(0, 10);
     const key = "diamond_profile_view:" + slug + ":" + day;
     if (!sessionStorage.getItem(key)) {

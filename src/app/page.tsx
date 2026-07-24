@@ -61,9 +61,9 @@ const featureCards = [
 ];
 
 const testimonials = [
-  { quote: "Placeholder for a parent story about sending one polished link to college coaches.", person: "Parent testimonial", detail: "Player family · Coming soon" },
-  { quote: "Placeholder for a player story about keeping film, stats, and recruiting information current.", person: "Player testimonial", detail: "Class year · Coming soon" },
-  { quote: "Placeholder for a coach perspective on finding the important information without hunting.", person: "Coach testimonial", detail: "Program name · Coming soon" },
+  { copy: "A cinematic profile that leads with high-impact imagery while keeping film, stats, and player details easy to scan.", person: "Mason Carter", detail: "Pitcher · Falcons" },
+  { copy: "A clean editorial presentation that organizes the information coaches need without making them hunt for it.", person: "Breydan Hayes", detail: "Shortstop · Carolina Outlaws" },
+  { copy: "A modern prospect profile that brings identity, team, position, location, and recruiting details into one link.", person: "Ethan Cole", detail: "First Base · Summit Baseball" },
 ];
 
 function ProductWindow() {
@@ -330,16 +330,16 @@ export default async function HomePage() {
       </section>
 
       <section className="mx-auto max-w-[1360px] px-4 py-28 sm:px-7 sm:py-36">
-        <p className="text-xl font-semibold text-[#ff4c59]">Stories will live here</p>
+        <p className="text-xl font-semibold text-[#ff4c59]">Featured player profiles</p>
         <div className="mt-5 flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
-          <h2 className="max-w-4xl text-5xl font-bold leading-[.98] tracking-[-0.055em] sm:text-7xl">Built for the people behind the player.</h2>
-          <p className="max-w-sm text-sm leading-6 text-white/45">These are intentionally marked placeholders until real customers approve their stories.</p>
+          <h2 className="max-w-4xl text-5xl font-bold leading-[.98] tracking-[-0.055em] sm:text-7xl">Different players. One clear introduction.</h2>
+          <p className="max-w-sm text-sm leading-6 text-white/45">Every profile keeps the player&apos;s story organized while giving the presentation its own identity.</p>
         </div>
         <div className="mt-14 grid gap-4 lg:grid-cols-3">
           {testimonials.map((testimonial, index) => (
             <article key={testimonial.person} className="flex min-h-80 flex-col rounded-2xl border border-white/15 bg-[#151518] p-7">
-              <span className="text-xs font-semibold text-[#ff5965]">Placeholder testimonial {String(index + 1).padStart(2, "0")}</span>
-              <blockquote className="mt-8 text-xl font-medium leading-8 text-white/78">“{testimonial.quote}”</blockquote>
+              <span className="text-xs font-semibold text-[#ff5965]">Player spotlight {String(index + 1).padStart(2, "0")}</span>
+              <p className="mt-8 text-xl font-medium leading-8 text-white/78">{testimonial.copy}</p>
               <div className="mt-auto border-t border-white/10 pt-5"><p className="text-sm font-semibold">{testimonial.person}</p><p className="mt-1 text-xs text-white/35">{testimonial.detail}</p></div>
             </article>
           ))}

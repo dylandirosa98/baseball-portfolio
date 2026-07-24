@@ -97,3 +97,13 @@ npm run video:vertical
 ```
 
 Outputs are written to `out/`.
+
+## Meta Ads measurement
+
+Set `NEXT_PUBLIC_META_PIXEL_ID` to the numeric Pixel ID from Meta Events Manager. When it is unset, the tracking integration remains dormant. The app records:
+
+- `PageView`, `ViewContent`, `Lead`, and `CompleteRegistration`
+- `PortfolioStarted` and `PortfolioPublished` custom funnel events
+- `InitiateCheckout`, `Subscribe`, and server-verified `Purchase` values
+
+UTM parameters and `fbclid` persist in the browser and are attached to Stripe Checkout metadata for campaign attribution. The Privacy Policy discloses this measurement.

@@ -44,6 +44,7 @@ import type { Highlight, MediaItem, Player, PlayerDesign, PlayerStats, PlayerWit
 import { DEFAULT_PLAYER_IMAGE, normalizedHeroImageScale } from "@/lib/player-image";
 import { PROFILE_DOMAIN, normalizeProfileSlug, profileSlugError, sanitizeProfileSlugInput } from "@/lib/slug";
 import { isStandardComDomain, normalizeManagedDomain } from "@/lib/domain-name";
+import { getMarketingAttribution, trackMetaEvent, trackMetaEventOnce } from "@/lib/marketing-attribution";
 
 const STORAGE_KEY = "diamond_builder_draft_v1";
 const ACTIVE_STEP_KEY = "diamond_builder_active_step_v1";
@@ -318,6 +319,17 @@ export default function BuilderPage() {
   const autosaveTimeoutRef = useRef<number | null>(null);
   const saveRequestRef = useRef(0);
   const draftVersionRef = useRef(0);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    trackMetaEventOnce("portfolio-started", "PortfolioStarted", { content_name: "Diamond Profile builder" }, true);
+    if (params.get("signup") === "1") {
+      trackMetaEventOnce("registration-completed", "CompleteRegistration", {
+        content_name: "Diamond Profile account",
+        status: true,
+      });
+    }
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -2304,6 +2316,10 @@ function ReviewStep({ draft, update, checkoutResult, isPublished, editing }: {
         const publishResponse = await fetch("/api/portfolio/publish", { method: "POST" });
         const publishData = await publishResponse.json();
         if (!publishResponse.ok) throw new Error(publishData.error || "Your portfolio could not be published.");
+        trackMetaEventOnce("portfolio-published:" + profileSlug, "PortfolioPublished", {
+          content_name: "Diamond Profile published",
+          content_ids: [profileSlug],
+        }, true);
       }
 
       if (!needsCheckout) {
@@ -2311,6 +2327,11 @@ function ReviewStep({ draft, update, checkoutResult, isPublished, editing }: {
         return;
       }
 
+      trackMetaEvent("InitiateCheckout", {
+        value: checkoutTotal,
+        currency: "USD",
+        content_name: `${selectedPlan.name}${customDomain ? " + Custom Domain" : ""}`,
+      });
       const response = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -2320,6 +2341,7 @@ function ReviewStep({ draft, update, checkoutResult, isPublished, editing }: {
           slug: profileSlug,
           playerName: [draft.firstName, draft.lastName].filter(Boolean).join(" "),
           domain: customDomain ? domainInput : "",
+          attribution: getMarketingAttribution(),
         }),
       });
       const data = await response.json();

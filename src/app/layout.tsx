@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Suspense } from "react";
+import MetaPixel from "@/components/MetaPixel";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -32,6 +34,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <Suspense fallback={null}>
+          <MetaPixel pixelId={process.env.NEXT_PUBLIC_META_PIXEL_ID} />
+        </Suspense>
         {children}
       </body>
     </html>

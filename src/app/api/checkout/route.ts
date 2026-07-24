@@ -10,6 +10,16 @@ function metadataValue(value: unknown, maxLength = 200) {
   return typeof value === "string" ? value.trim().toLowerCase().slice(0, maxLength) : "";
 }
 
+function attributionMetadata(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const source = value as Record<string, unknown>;
+  const keys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "fbclid", "landing_page", "captured_at"];
+  return Object.fromEntries(keys.flatMap((key) => {
+    const item = typeof source[key] === "string" ? source[key].trim().slice(0, 300) : "";
+    return item ? [["attribution_" + key, item]] : [];
+  }));
+}
+
 export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -105,6 +115,7 @@ export async function POST(request: Request) {
     user_id: user.id,
     billing_tier: effectiveTier,
     has_custom_domain: String(needsDomain),
+    ...attributionMetadata(body.attribution),
   };
   const slug = metadataValue(body.slug, 100);
   const playerName = typeof body.playerName === "string" ? body.playerName.trim().slice(0, 150) : "";
