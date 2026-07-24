@@ -1608,12 +1608,14 @@ body {
   right: auto;
   bottom: auto;
   left: clamp(1rem, 4vw, 4rem);
+  z-index: 3;
   max-width: calc(100% - 2rem);
   font-size: clamp(8rem, 17vw, 15rem);
   letter-spacing: -0.08em;
   line-height: 0.8;
   white-space: nowrap;
-  opacity: 0.12;
+  opacity: 0.58;
+  pointer-events: none;
 }
 
 @container player-profile (max-width: 767px) {
@@ -1634,7 +1636,7 @@ body {
     left: 1rem;
     max-width: calc(100% - 2rem);
     font-size: clamp(7rem, 34cqw, 10rem);
-    opacity: 0.11;
+    opacity: 0.58;
   }
 }
 
@@ -1761,12 +1763,12 @@ body {
 
 /* More solid Design 2 jersey number. */
 .profile-design-2 .split-hero-number {
-  opacity: 0.5;
+  opacity: 0.68;
 }
 
 @container player-profile (max-width: 767px) {
   .profile-design-2 .split-hero-number {
-    opacity: 0.48;
+    opacity: 0.64;
   }
 }
 
