@@ -14,7 +14,7 @@ export default function TermsPage() {
         <section><h2 className="text-xl font-bold">Acceptable use</h2><p>Do not upload unlawful, infringing, deceptive, abusive, explicit, malicious, or unauthorized content. Do not probe the service, evade limits, impersonate another person, or interfere with other users.</p></section>
         <section><h2 className="text-xl font-bold">Hosted media</h2><p>Paid video capacity is subject to plan limits and reasonable fair-use safeguards. Paid hosted media may be disabled after downgrade or cancellation and deleted after a reasonable retention period. Keep original copies of all media.</p></section>
         <section><h2 className="text-xl font-bold">Service availability</h2><p>We work to keep Diamond Profile available, but do not guarantee uninterrupted operation, recruiting outcomes, domain availability, or permanent storage. Features may change to protect reliability, security, and legal compliance.</p></section>
-        <section><h2 className="text-xl font-bold">Contact</h2><p>Questions can be sent to <a className="underline" href="mailto:support@diamondprofile.app">support@diamondprofile.app</a>.</p></section>
+        <section><h2 className="text-xl font-bold">Contact</h2><p>General questions can be sent to <a className="underline" href="mailto:support@diamondprofile.app">support@diamondprofile.app</a>. For charges, payments, or subscription billing, contact <a className="underline" href="mailto:billing@diamondprofile.app">billing@diamondprofile.app</a>.</p></section>
       </article>
     </main>
   );

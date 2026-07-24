@@ -443,6 +443,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                   )}
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  <a
+                    href="mailto:billing@diamondprofile.app?subject=Diamond%20Profile%20billing%20help"
+                    className="inline-flex min-h-11 items-center rounded-lg border border-white/10 px-4 text-sm font-semibold text-white/55 hover:border-white/20 hover:text-white"
+                  >
+                    Billing help
+                  </a>
                   {playerRow?.stripe_customer_id && (
                     <form action={manageBilling}>
                       <button className="min-h-11 rounded-lg border border-white/15 px-4 text-sm font-bold hover:bg-white/5">Manage billing</button>
