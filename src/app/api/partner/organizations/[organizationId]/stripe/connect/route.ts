@@ -12,7 +12,12 @@ export async function POST(_request: Request, context: { params: Promise<{ organ
   if (!(await partnerAccess(user.id, organizationId, ["owner", "admin"]))) {
     return NextResponse.json({ error: "Partner administrator access is required." }, { status: 403 });
   }
-  const clientId = process.env.STRIPE_CONNECT_CLIENT_ID;
+  let clientId = process.env.STRIPE_CONNECT_CLIENT_ID;
+  if (!clientId) {
+    const setting = await createAdminClient().from("platform_settings").select("value").eq("key", "stripe_connect_client_id").maybeSingle();
+    if (setting.error) return NextResponse.json({ error: "Stripe Connect configuration could not be read." }, { status: 500 });
+    clientId = setting.data?.value;
+  }
   if (!clientId) return NextResponse.json({ error: "Stripe Connect is not configured yet." }, { status: 503 });
 
   const state = crypto.randomUUID();
