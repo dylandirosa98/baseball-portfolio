@@ -27,6 +27,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAppUrl, getStripe } from "@/lib/stripe";
 import { BILLING_LIMITS, portfolioUsage, type BillingTier } from "@/lib/billing";
 import { rowToPlayer, type PlayerRow } from "@/lib/supabase/transforms";
+import { profileHostname, profileUrl } from "@/lib/slug";
 import AnalyticsChart from "@/components/dashboard/AnalyticsChart";
 import CopyProfileLink from "@/components/dashboard/CopyProfileLink";
 import DeleteAccountButton from "@/components/DeleteAccountButton";
@@ -170,7 +171,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     ? playerRow.custom_domain && domainStatus === "active"
       ? "https://" + playerRow.custom_domain
       : playerRow.slug
-        ? getAppUrl() + "/" + playerRow.slug
+        ? profileUrl(playerRow.slug)
         : null
     : null;
   const editHref = (step: "info" | "photos" | "style" | "stats" | "content" | "links" | "review" = "info") =>
@@ -275,7 +276,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                       <Rocket className="h-4 w-4 text-[#ff6b78]" />
                     </div>
                     <p className="mt-6 text-2xl font-black">{playerRow?.is_published ? "Published" : "Draft"}</p>
-                    <p className="mt-1 truncate text-xs text-white/35">{playerRow?.slug ? `diamondprofile.app/${playerRow.slug}` : "No address selected"}</p>
+                    <p className="mt-1 truncate text-xs text-white/35">{playerRow?.slug ? profileHostname(playerRow.slug) : "No address selected"}</p>
                     <Link href={editHref("review")} className="mt-4 inline-flex min-h-9 items-center gap-1.5 text-xs font-bold text-[#ff6b78] hover:text-white">
                       {playerRow?.is_published ? "Manage publishing" : "Finish & publish"} <ArrowRight className="h-3.5 w-3.5" />
                     </Link>

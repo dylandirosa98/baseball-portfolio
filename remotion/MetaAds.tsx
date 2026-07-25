@@ -275,7 +275,7 @@ function OneLinkScene() {
           <Phone src="images/marketing-hero.png" height={1190} rotate={-1.3} />
         </div>
         <div style={{ position: "absolute", zIndex: 5, left: 64, right: 64, bottom: 170, display: "flex", justifyContent: "center" }}>
-          <div style={{ padding: "22px 34px", borderRadius: 999, border: "1px solid rgba(255,255,255,.18)", background: "rgba(5,5,6,.82)", backdropFilter: "blur(12px)", fontSize: 23, fontWeight: 900, letterSpacing: 1.2, ...enter(frame, 54, 30) }}>diamondprofile.app/ethan-cole</div>
+          <div style={{ padding: "22px 34px", borderRadius: 999, border: "1px solid rgba(255,255,255,.18)", background: "rgba(5,5,6,.82)", backdropFilter: "blur(12px)", fontSize: 23, fontWeight: 900, letterSpacing: 1.2, ...enter(frame, 54, 30) }}>ethan-cole.diamondprofile.app</div>
         </div>
         <RedWipe at={278} />
         <Grain />

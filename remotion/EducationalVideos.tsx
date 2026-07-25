@@ -205,7 +205,7 @@ function MessageVisual({ lesson, frame }: { lesson: Lesson; frame: number }) {
       </div>
       <div style={{ marginTop: 20, marginRight: 110, padding: "31px 35px", borderRadius: "30px 30px 30px 8px", border: "2px solid rgba(7,7,9,.12)", background: WHITE, color: INK, ...reveal(frame, 19, 60) }}>
         <div style={{ color: lesson.accent, fontSize: 17, fontWeight: 950, letterSpacing: 3 }}>ONE LINK</div>
-        <div style={{ marginTop: 16, fontSize: 28, fontWeight: 900 }}>diamondprofile.app/mason-carter</div>
+        <div style={{ marginTop: 16, fontSize: 28, fontWeight: 900 }}>mason-carter.diamondprofile.app</div>
       </div>
       <div style={{ marginTop: 20, marginLeft: 175, padding: "27px 33px", borderRadius: "30px 30px 8px 30px", background: lesson.accent, color: INK, boxShadow: "0 20px 55px rgba(0,0,0,.12)", ...reveal(frame, 30, 55) }}>
         <div style={{ fontSize: 17, fontWeight: 950, letterSpacing: 3 }}>CLEAR NEXT STEP</div>

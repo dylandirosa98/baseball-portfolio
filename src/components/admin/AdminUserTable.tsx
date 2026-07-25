@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import type { AdminUserSummary } from "@/lib/admin-metrics";
+import { profileUrl } from "@/lib/slug";
 
 function badgeClass(tier: AdminUserSummary["tier"]) {
   if (tier === "elite") return "bg-amber-300/15 text-amber-200";
@@ -62,7 +63,7 @@ export default function AdminUserTable({ users }: { users: AdminUserSummary[] })
                 <td className="px-4 py-4 capitalize text-white/50">{user.subscriptionStatus}</td>
                 <td className="px-4 py-4">
                   {user.slug ? (
-                    <><a href={"/" + user.slug} target="_blank" rel="noreferrer" className="font-semibold text-white/70 hover:text-white">{user.slug}</a><p className="mt-1 text-white/30">{user.published ? "Published" : "Draft"}</p></>
+                    <><a href={profileUrl(user.slug)} target="_blank" rel="noreferrer" className="font-semibold text-white/70 hover:text-white">{user.slug}</a><p className="mt-1 text-white/30">{user.published ? "Published" : "Draft"}</p></>
                   ) : <span className="text-white/30">Not started</span>}
                 </td>
                 <td className="px-4 py-4 text-white/50">{user.views.toLocaleString()} views · {user.videoPlays.toLocaleString()} plays</td>

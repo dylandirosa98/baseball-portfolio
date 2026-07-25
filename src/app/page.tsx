@@ -76,7 +76,7 @@ function ProductWindow() {
             <Image src="/diamond-profile-logo.png" alt="" width={24} height={24} className="h-6 w-6 object-contain" />
             <strong className="hidden text-[11px] text-white/75 sm:block">Diamond Profile</strong>
             <span className="min-w-0 flex-1 truncate rounded-md border border-white/5 bg-black/25 px-3 py-1.5 text-center font-mono text-[8px] text-white/35">
-              diamondprofile.app/ethan-cole
+              ethan-cole.diamondprofile.app
             </span>
             <span className="h-2 w-2 rounded-full bg-[#e01010]" />
           </div>

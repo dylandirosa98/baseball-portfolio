@@ -42,7 +42,7 @@ import MediaPhotoUpload from "@/components/admin/MediaPhotoUpload";
 import MediaVideoUpload from "@/components/admin/MediaVideoUpload";
 import type { Highlight, MediaItem, Player, PlayerDesign, PlayerStats, PlayerWithMeta, Skillset, SocialLink } from "@/lib/types";
 import { DEFAULT_PLAYER_IMAGE, normalizedHeroImageScale } from "@/lib/player-image";
-import { PROFILE_DOMAIN, normalizeProfileSlug, profileSlugError, sanitizeProfileSlugInput } from "@/lib/slug";
+import { PROFILE_DOMAIN, normalizeProfileSlug, profileHostname, profileSlugError, profileUrl, sanitizeProfileSlugInput } from "@/lib/slug";
 import { isStandardComDomain, normalizeManagedDomain } from "@/lib/domain-name";
 import { getMarketingAttribution, trackMetaEvent, trackMetaEventOnce } from "@/lib/marketing-attribution";
 
@@ -472,7 +472,7 @@ export default function BuilderPage() {
   const completion = profileCompletion(draft);
   const editingExisting = editMode || hasCloudProfile;
   const currentStepCopy = editingExisting ? editorStepCopy[activeStep] : currentStep;
-  const liveHref = isPublished && draft.slug && draft.slug !== "preview" ? `/${draft.slug}` : null;
+  const liveHref = isPublished && draft.slug && draft.slug !== "preview" ? profileUrl(draft.slug) : null;
 
   const update = useCallback((updates: Partial<Player>) => {
     draftVersionRef.current += 1;
@@ -2190,7 +2190,7 @@ function ReviewStep({ draft, update, checkoutResult, isPublished, editing }: {
           setSlugMessage(data.error || "Address availability could not be checked.");
         } else if (data.available) {
           setSlugState("available");
-          setSlugMessage(PROFILE_DOMAIN + "/" + data.slug + " is available.");
+          setSlugMessage(profileHostname(data.slug) + " is available.");
           if (draft.slug !== data.slug) update({ slug: data.slug });
         } else {
           setSlugState("unavailable");
@@ -2377,7 +2377,7 @@ function ReviewStep({ draft, update, checkoutResult, isPublished, editing }: {
         <label className="mt-4 block">
           <span className="sr-only">Diamond Profile address</span>
           <span className="flex min-h-12 items-center overflow-hidden rounded-lg border border-white/10 bg-black/30 focus-within:border-white/35">
-            <span className="shrink-0 border-r border-white/10 px-3 text-xs text-white/40">{PROFILE_DOMAIN}/</span>
+            <span className="shrink-0 border-r border-white/10 px-2 text-[10px] text-white/35 sm:px-3 sm:text-xs">https://</span>
             <input
               value={profileSlug}
               onChange={(event) => {
@@ -2393,6 +2393,7 @@ function ReviewStep({ draft, update, checkoutResult, isPublished, editing }: {
               className="min-w-0 flex-1 bg-transparent px-3 py-3 text-sm font-semibold text-white outline-none"
               placeholder="player-name"
             />
+            <span className="shrink-0 border-l border-white/10 px-2 text-[10px] text-white/40 sm:px-3 sm:text-xs">.{PROFILE_DOMAIN}</span>
             <span className="flex w-10 shrink-0 justify-center">
               {slugState === "checking" && <LoaderCircle className="h-4 w-4 animate-spin text-white/45" />}
               {slugState === "available" && <CheckCircle2 className="h-4 w-4 text-emerald-300" />}
