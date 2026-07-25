@@ -4,8 +4,51 @@ import Stripe from "stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertStripeEventMode, getStripe, isEntitled } from "@/lib/stripe";
 import { disableManagedDomainRenewal, provisionManagedDomain } from "@/lib/vercel-domains";
+import { syncPartnerWholesaleBilling } from "@/lib/partner-billing";
+import { catalogKindFromPrice, getPartnerCatalogPriceIds } from "@/lib/partner-stripe-catalog";
 
 export const runtime = "nodejs";
+
+async function completePartnerBillingSetup(session: Stripe.Checkout.Session) {
+  const organizationId = session.metadata?.organization_id;
+  const customerId = objectId(session.customer);
+  const setupIntentId = objectId(session.setup_intent);
+  if (!organizationId || !customerId || !setupIntentId) throw new Error("Partner billing setup metadata is incomplete.");
+  const setupIntent = await getStripe().setupIntents.retrieve(setupIntentId);
+  const paymentMethodId = objectId(setupIntent.payment_method);
+  if (!paymentMethodId) throw new Error("Partner billing setup has no payment method.");
+  await getStripe().customers.update(customerId, { invoice_settings: { default_payment_method: paymentMethodId } });
+  const { error } = await createAdminClient().from("partner_organizations").update({
+    platform_stripe_customer_id: customerId,
+    billing_payment_method_ready: true,
+    billing_sync_error: null,
+  }).eq("id", organizationId);
+  if (error) throw error;
+  await syncPartnerWholesaleBilling(organizationId);
+}
+
+async function recordPartnerWholesale(subscription: Stripe.Subscription) {
+  const organizationId = subscription.metadata.organization_id;
+  if (!organizationId) return false;
+  const values: Record<string, unknown> = {
+    platform_stripe_subscription_id: subscription.status === "canceled" ? null : subscription.id,
+    platform_subscription_status: subscription.status,
+    billing_synced_at: new Date().toISOString(),
+  };
+  const catalog = await getPartnerCatalogPriceIds();
+  const priceColumns = { base: "platform_base_item_id", pro: "platform_pro_item_id", elite: "platform_elite_item_id", domain: "platform_domain_item_id" } as const;
+  for (const item of subscription.items.data) {
+    const kind = catalogKindFromPrice(item.price, catalog);
+    const column = kind ? priceColumns[kind] : null;
+    if (column) values[column] = item.id;
+  }
+  if (subscription.status === "canceled") {
+    Object.assign(values, { platform_base_item_id: null, platform_pro_item_id: null, platform_elite_item_id: null, platform_domain_item_id: null });
+  }
+  const { error } = await createAdminClient().from("partner_organizations").update(values).eq("id", organizationId);
+  if (error) throw error;
+  return true;
+}
 
 function objectId(value: string | { id: string } | null) {
   return typeof value === "string" ? value : value?.id || null;
@@ -138,11 +181,18 @@ export async function POST(request: Request) {
   if (ledgerError) return NextResponse.json({ error: "Webhook event could not be recorded." }, { status: 500 });
 
   try {
-    if (event.type === "checkout.session.completed" && typeof event.data.object.subscription === "string") {
-      await reconcileCustomer(await getStripe().subscriptions.retrieve(event.data.object.subscription), event.created, true, event.id);
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object as Stripe.Checkout.Session;
+      if (session.metadata?.kind === "partner_billing_setup") {
+        await completePartnerBillingSetup(session);
+      } else if (typeof session.subscription === "string") {
+        const subscription = await getStripe().subscriptions.retrieve(session.subscription);
+        if (!(await recordPartnerWholesale(subscription))) await reconcileCustomer(subscription, event.created, true, event.id);
+      }
     }
     if (["customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted"].includes(event.type)) {
-      await reconcileCustomer(event.data.object as Stripe.Subscription, event.created);
+      const subscription = event.data.object as Stripe.Subscription;
+      if (!(await recordPartnerWholesale(subscription))) await reconcileCustomer(subscription, event.created);
     }
     const { error } = await admin.from("stripe_webhook_events").update({ status: "processed", processed_at: new Date().toISOString() }).eq("id", event.id);
     if (error) throw error;

@@ -24,6 +24,8 @@ import {
   Video,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { claimPartnerInvitations } from "@/lib/partners";
 import { getAppUrl, getStripe } from "@/lib/stripe";
 import { BILLING_LIMITS, portfolioUsage, type BillingTier } from "@/lib/billing";
 import { rowToPlayer, type PlayerRow } from "@/lib/supabase/transforms";
@@ -75,6 +77,15 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth");
+  await claimPartnerInvitations(user);
+  const { data: partnerMembership } = await createAdminClient()
+    .from("partner_memberships")
+    .select("organization_id")
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .order("created_at")
+    .limit(1)
+    .maybeSingle();
 
   const { data: rawPlayer } = await supabase
     .from("players")
@@ -213,6 +224,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               <a href={liveUrl} target="_blank" rel="noreferrer" className="flex min-h-11 items-center gap-3 rounded-lg px-3 text-white/55 transition hover:bg-white/5 hover:text-white">
                 <ExternalLink className="h-4 w-4" /> View live site
               </a>
+            )}
+            {partnerMembership?.organization_id && (
+              <Link href={`/partner/${partnerMembership.organization_id}`} className="flex min-h-11 items-center gap-3 rounded-lg px-3 text-white/55 transition hover:bg-white/5 hover:text-white">
+                <ShieldCheck className="h-4 w-4" /> Partner workspace
+              </Link>
             )}
             {adminAllowed(user.email) && (
               <Link href="/admin" className="flex min-h-11 items-center gap-3 rounded-lg px-3 text-white/55 transition hover:bg-white/5 hover:text-white">

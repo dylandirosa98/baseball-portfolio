@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Player } from "@/lib/types";
+import { Player, ProfileBranding } from "@/lib/types";
 import HeroSection from "./sections/HeroSection";
 import AlternateHeroSection from "./sections/AlternateHeroSection";
 import StatsBar from "./sections/StatsBar";
@@ -25,9 +25,10 @@ function hexToRgb(hex: string) {
 
 interface PlayerTemplateProps {
   player: Player;
+  branding?: ProfileBranding;
 }
 
-export default function PlayerTemplate({ player }: PlayerTemplateProps) {
+export default function PlayerTemplate({ player, branding }: PlayerTemplateProps) {
   useEffect(() => {
     const { r, g, b } = hexToRgb(player.themeColor);
     const base = player.lightMode ? 240 : 10; // #f0f0f0 vs #0a0a0a
@@ -118,7 +119,7 @@ export default function PlayerTemplate({ player }: PlayerTemplateProps) {
 
       {showStats && <StatsBar stats={player.currentStats} position={player.position} />}
       {order.map(renderSection)}
-      <SocialFooter socialLinks={player.socialLinks} lightMode={player.lightMode} />
+      <SocialFooter socialLinks={player.socialLinks} lightMode={player.lightMode} branding={branding} />
       </div>
     </main>
   );

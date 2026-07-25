@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { ImagePlus, LoaderCircle, Upload } from "lucide-react";
+import { managedApiPath } from "@/lib/managed-profile-client";
 
 interface ImageUploadProps {
   slug: string;
@@ -39,7 +40,7 @@ export default function ImageUpload({ slug, folder, currentUrl, onUpload }: Imag
     formData.set("slug", slug || "temp");
     formData.set("kind", kind);
 
-    const response = await fetch("/api/images/upload", {
+    const response = await fetch(managedApiPath("/api/images/upload"), {
       method: "POST",
       body: formData,
     });

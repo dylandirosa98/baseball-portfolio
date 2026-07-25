@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { ImagePlus, LoaderCircle } from "lucide-react";
+import { managedApiPath } from "@/lib/managed-profile-client";
 
 interface MediaPhotoUploadProps {
   slug: string;
@@ -56,7 +57,7 @@ export default function MediaPhotoUpload({ slug, index, currentUrl, onUpload }: 
       formData.set("kind", "media");
       formData.set("index", String(index));
 
-      const response = await fetch("/api/images/upload", {
+      const response = await fetch(managedApiPath("/api/images/upload"), {
         method: "POST",
         body: formData,
       });

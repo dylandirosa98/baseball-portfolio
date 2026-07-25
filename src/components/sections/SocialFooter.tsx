@@ -4,11 +4,12 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
 import { ExternalLink, Mail } from "lucide-react";
-import { SocialLink } from "@/lib/types";
+import { ProfileBranding, SocialLink } from "@/lib/types";
 
 interface SocialFooterProps {
   socialLinks: SocialLink[];
   lightMode?: boolean;
+  branding?: ProfileBranding;
 }
 
 function SocialIcon({ platform }: { platform: SocialLink["platform"] }) {
@@ -16,7 +17,7 @@ function SocialIcon({ platform }: { platform: SocialLink["platform"] }) {
   return <ExternalLink className="h-5 w-5" />;
 }
 
-export default function SocialFooter({ socialLinks }: SocialFooterProps) {
+export default function SocialFooter({ socialLinks, branding }: SocialFooterProps) {
   return (
     <footer className="px-5 pb-20 pt-12 lg:mx-auto lg:max-w-4xl lg:py-16">
       <motion.div
@@ -41,10 +42,20 @@ export default function SocialFooter({ socialLinks }: SocialFooterProps) {
           ))}
         </div>
         <div className="mx-auto mb-6 h-px w-12 bg-white/10" />
-        <Link href="/" className="inline-flex items-center gap-2 text-xs font-semibold text-white/35 transition hover:text-white/60">
-          <Image src="/diamond-profile-logo.png" alt="" width={48} height={48} className="h-9 w-9 object-contain" />
-          Made with Diamond Profile
-        </Link>
+        {branding?.hideDiamondBranding ? (
+          <a href={branding.supportEmail ? `mailto:${branding.supportEmail}` : undefined} className="inline-flex items-center gap-2 text-xs font-semibold text-white/40 transition hover:text-white/65">
+            {branding.logoUrl ? <Image src={branding.logoUrl} alt="" width={48} height={48} unoptimized className="h-9 w-9 object-contain" /> : <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: branding.primaryColor }} />}
+            Managed by {branding.name}
+          </a>
+        ) : (
+          <div className="flex flex-col items-center gap-2">
+            {branding && <span className="text-[10px] font-semibold uppercase tracking-[.16em] text-white/25">Managed by {branding.name}</span>}
+            <Link href="https://diamondprofile.app" className="inline-flex items-center gap-2 text-xs font-semibold text-white/35 transition hover:text-white/60">
+              <Image src="/diamond-profile-logo.png" alt="" width={48} height={48} className="h-9 w-9 object-contain" />
+              Made with Diamond Profile
+            </Link>
+          </div>
+        )}
       </motion.div>
     </footer>
   );

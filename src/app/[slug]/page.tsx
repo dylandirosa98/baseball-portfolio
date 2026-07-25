@@ -1,11 +1,13 @@
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { rowToPlayer, PlayerRow } from "@/lib/supabase/transforms";
 import { PROFILE_DOMAIN, profileUrl } from "@/lib/slug";
 import PlayerTemplate from "@/components/PlayerTemplate";
 import PortfolioAnalytics from "@/components/PortfolioAnalytics";
 import type { Metadata } from "next";
+import type { ProfileBranding } from "@/lib/types";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -60,26 +62,35 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function PlayerPage({ params }: PageProps) {
   const { slug } = await params;
-  const supabase = await createClient();
+  const admin = createAdminClient();
 
-  const { data, error } = await supabase
+  const { data, error } = await admin
     .from("players")
-    .select("*")
+    .select("*, partner_organizations(name, logo_url, primary_color, support_email, hide_diamond_branding, status)")
     .eq("slug", slug)
     .eq("is_published", true)
     .single();
 
   if (error || !data) notFound();
+  const organization = data.partner_organizations as unknown as { name: string; logo_url: string | null; primary_color: string; support_email: string | null; hide_diamond_branding: boolean; status: string } | null;
+  if (organization && organization.status !== "active") notFound();
 
   const hostname = await requestHostname();
   if (hostname === PROFILE_DOMAIN || hostname === `www.${PROFILE_DOMAIN}`) redirect(profileUrl(slug));
 
   const player = rowToPlayer(data as PlayerRow, { enforceEntitlements: true });
+  const branding: ProfileBranding | undefined = organization ? {
+    name: organization.name,
+    logoUrl: organization.logo_url || undefined,
+    primaryColor: organization.primary_color,
+    supportEmail: organization.support_email || undefined,
+    hideDiamondBranding: organization.hide_diamond_branding,
+  } : undefined;
 
   return (
     <>
       <PortfolioAnalytics slug={player.slug} />
-      <PlayerTemplate player={player} />
+      <PlayerTemplate player={player} branding={branding} />
     </>
   );
 }

@@ -50,6 +50,15 @@ const STORAGE_KEY = "diamond_builder_draft_v1";
 const ACTIVE_STEP_KEY = "diamond_builder_active_step_v1";
 const SCOPED_STORAGE_PREFIX = "diamond_builder_account_draft_v1:";
 
+function portfolioEndpoint(path = "/api/portfolio") {
+  if (typeof window === "undefined") return path;
+  const playerId = new URLSearchParams(window.location.search).get("playerId");
+  if (!playerId) return path;
+  const url = new URL(path, window.location.origin);
+  url.searchParams.set("playerId", playerId);
+  return url.pathname + url.search;
+}
+
 const emptyStats: PlayerStats = {
   gamesPlayed: 0,
   battingAverage: 0,
@@ -306,6 +315,7 @@ export default function BuilderPage() {
   const [loaded, setLoaded] = useState(false);
   const [saveState, setSaveState] = useState<"saving" | "saved" | "error">("saved");
   const [cloudEnabled, setCloudEnabled] = useState(false);
+  const [managedByPartner, setManagedByPartner] = useState(false);
   const [hasCloudProfile, setHasCloudProfile] = useState(false);
   const [isPublished, setIsPublished] = useState(false);
   const [storageKey, setStorageKey] = useState(STORAGE_KEY);
@@ -347,10 +357,11 @@ export default function BuilderPage() {
       let nextDirty = Boolean(legacyDraft && legacyDraft.savedAt > 0);
 
       try {
-        const response = await fetch("/api/portfolio");
+        const response = await fetch(portfolioEndpoint());
         if (response.ok) {
-          const data = await response.json() as { player?: PlayerWithMeta | null; userId?: string };
-          const scopedKey = data.userId ? SCOPED_STORAGE_PREFIX + data.userId : STORAGE_KEY;
+          const data = await response.json() as { player?: PlayerWithMeta | null; userId?: string; managed?: boolean };
+          const managedPlayerId = params.get("playerId");
+          const scopedKey = data.userId ? SCOPED_STORAGE_PREFIX + data.userId + (managedPlayerId ? `:${managedPlayerId}` : "") : STORAGE_KEY;
           const scopedDraft = readStoredDraft(scopedKey);
           const cloudDraft = data.player ? mergeDraft(data.player) : null;
           const cloudUpdatedAt = data.player?.updatedAt ? Date.parse(data.player.updatedAt) : 0;
@@ -370,6 +381,7 @@ export default function BuilderPage() {
           nextDraft = recoveredDraft ?? cloudDraft ?? scopedDraft?.draft ?? legacyDraft?.draft ?? defaultDraft;
           nextDirty = localIsNewer || (!cloudDraft && Boolean(scopedDraft ?? legacyDraft));
           setCloudEnabled(true);
+          setManagedByPartner(Boolean(data.managed));
           setHasCloudProfile(Boolean(data.player));
           setIsPublished(Boolean(data.player?.isPublished));
           if (cloudDraft && !localIsNewer) setLastSavedAt(cloudUpdatedAt || Date.now());
@@ -423,7 +435,7 @@ export default function BuilderPage() {
     setSaveState("saving");
     setSaveMessage("");
     try {
-      const response = await fetch("/api/portfolio", {
+      const response = await fetch(portfolioEndpoint(), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(nextDraft),
@@ -736,6 +748,7 @@ export default function BuilderPage() {
               checkoutResult={checkoutResult}
               isPublished={isPublished}
               editing={editingExisting}
+              managedByPartner={managedByPartner}
             />
             {editingExisting ? (
               <div className="mt-6 hidden items-center justify-end gap-2 border-t border-white/10 pt-4 lg:flex">
@@ -882,14 +895,14 @@ export default function BuilderPage() {
   );
 }
 
-function StepEditor({ draft, step, update, checkoutResult, isPublished, editing }: { draft: Player; step: StepId; update: (updates: Partial<Player>) => void; checkoutResult: "success" | "canceled" | null; isPublished: boolean; editing: boolean }) {
+function StepEditor({ draft, step, update, checkoutResult, isPublished, editing, managedByPartner }: { draft: Player; step: StepId; update: (updates: Partial<Player>) => void; checkoutResult: "success" | "canceled" | null; isPublished: boolean; editing: boolean; managedByPartner: boolean }) {
   if (step === "info") return <InfoStep draft={draft} update={update} editing={editing} />;
   if (step === "photos") return <PhotosStep draft={draft} update={update} editing={editing} />;
   if (step === "style") return <StyleStep draft={draft} update={update} editing={editing} />;
   if (step === "stats") return <StatsStep draft={draft} update={update} editing={editing} />;
   if (step === "content") return <ContentStep draft={draft} update={update} editing={editing} />;
   if (step === "links") return <LinksStep draft={draft} update={update} editing={editing} />;
-  return <ReviewStep draft={draft} update={update} checkoutResult={checkoutResult} isPublished={isPublished} editing={editing} />;
+  return <ReviewStep draft={draft} update={update} checkoutResult={checkoutResult} isPublished={isPublished} editing={editing} managedByPartner={managedByPartner} />;
 }
 
 function SectionHeader({ title, body }: { title: string; body: string }) {
@@ -2137,12 +2150,13 @@ function suggestedDomain(draft: Player) {
   return name ? name + ".com" : "";
 }
 
-function ReviewStep({ draft, update, checkoutResult, isPublished, editing }: {
+function ReviewStep({ draft, update, checkoutResult, isPublished, editing, managedByPartner }: {
   draft: Player;
   update: (updates: Partial<Player>) => void;
   checkoutResult: "success" | "canceled" | null;
   isPublished: boolean;
   editing: boolean;
+  managedByPartner: boolean;
 }) {
   const cloudDraft = draft as Player & Partial<PlayerWithMeta>;
   const currentTier = cloudDraft.billingTier === "pro" || cloudDraft.billingTier === "elite" ? cloudDraft.billingTier : "free";
@@ -2275,7 +2289,7 @@ function ReviewStep({ draft, update, checkoutResult, isPublished, editing }: {
 
   async function saveDraft() {
     const launchDraft = { ...draft, slug: profileSlug };
-    const response = await fetch("/api/portfolio", {
+    const response = await fetch(portfolioEndpoint(), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(launchDraft),
@@ -2313,7 +2327,7 @@ function ReviewStep({ draft, update, checkoutResult, isPublished, editing }: {
       }
 
       if (!isPublished) {
-        const publishResponse = await fetch("/api/portfolio/publish", { method: "POST" });
+        const publishResponse = await fetch(portfolioEndpoint("/api/portfolio/publish"), { method: "POST" });
         const publishData = await publishResponse.json();
         if (!publishResponse.ok) throw new Error(publishData.error || "Your portfolio could not be published.");
         trackMetaEventOnce("portfolio-published:" + profileSlug, "PortfolioPublished", {
@@ -2409,6 +2423,8 @@ function ReviewStep({ draft, update, checkoutResult, isPublished, editing }: {
       </section>
 
 
+      {managedByPartner && <div className="mb-5 rounded-lg border border-emerald-300/20 bg-emerald-300/[.08] p-4"><p className="text-sm font-bold text-emerald-100">Partner-managed profile</p><p className="mt-1 text-xs leading-5 text-emerald-100/55">Your organization controls plan billing. You can edit and publish here without entering payment information.</p></div>}
+
       {checkoutResult === "success" && (
         <div className="mb-5 flex gap-3 rounded-lg border border-emerald-400/25 bg-emerald-400/10 p-3 text-sm text-emerald-100">
           <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300" />
@@ -2432,6 +2448,7 @@ function ReviewStep({ draft, update, checkoutResult, isPublished, editing }: {
         </div>
       </div>
 
+      {!managedByPartner && <>
       <div>
         <h3 className="text-sm font-semibold text-white/85">Choose a base plan</h3>
         <p className="mt-1 text-xs text-white/35">Free stays free. Paid plans bill monthly and can be canceled from your account.</p>
@@ -2489,18 +2506,19 @@ function ReviewStep({ draft, update, checkoutResult, isPublished, editing }: {
           </div>
         )}
       </section>
+      </>}
 
       <div id="launch-checkout" className="scroll-mt-40 pt-6">
         <div className="flex items-center justify-between gap-4">
-          <div><p className="text-sm font-semibold">{selectedPlan.name}{customDomain ? " + Custom Domain" : ""}</p><p className="mt-0.5 text-xs text-white/35">{needsCheckout ? `$${checkoutTotal} in new monthly services` : isPublished ? "No new charge—save your latest changes" : "No card required for free hosting"}</p></div>
+          <div><p className="text-sm font-semibold">{managedByPartner ? "Organization-managed publishing" : `${selectedPlan.name}${customDomain ? " + Custom Domain" : ""}`}</p><p className="mt-0.5 text-xs text-white/35">{managedByPartner ? "Billing is handled by your partner organization" : needsCheckout ? `$${checkoutTotal} in new monthly services` : isPublished ? "No new charge—save your latest changes" : "No card required for free hosting"}</p></div>
           <ShieldCheck className="h-5 w-5 text-white/35" />
         </div>
         <button type="button" onClick={startLaunch} disabled={checkoutState === "loading" || !slugReady || !domainReady}
           className="mt-4 inline-flex min-h-13 w-full items-center justify-center gap-2 rounded-lg bg-white px-4 text-sm font-bold text-black transition hover:bg-white/85 disabled:opacity-60">
-          {checkoutState === "loading" ? <><LoaderCircle className="h-4 w-4 animate-spin" />{needsCheckout ? "Opening checkout" : "Saving changes"}</> : <>{needsCheckout ? "Continue to secure checkout" : isPublished ? "Save changes and return" : currentTier === "free" ? "Publish free" : "Publish profile"}<ArrowRight className="h-4 w-4" /></>}
+          {checkoutState === "loading" ? <><LoaderCircle className="h-4 w-4 animate-spin" />{!managedByPartner && needsCheckout ? "Opening checkout" : "Saving changes"}</> : <>{managedByPartner ? isPublished ? "Save profile changes" : "Publish managed profile" : needsCheckout ? "Continue to secure checkout" : isPublished ? "Save changes and return" : currentTier === "free" ? "Publish free" : "Publish profile"}<ArrowRight className="h-4 w-4" /></>}
         </button>
         <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-[11px] text-white/30">
-          {needsCheckout ? <><LockKeyhole className="h-3.5 w-3.5" />Payment is completed securely with Stripe</> : isPublished ? <>Your live website stays online while changes save</> : <>No payment information required</>}
+          {managedByPartner ? <>Your organization manages this profile&apos;s access</> : needsCheckout ? <><LockKeyhole className="h-3.5 w-3.5" />Payment is completed securely with Stripe</> : isPublished ? <>Your live website stays online while changes save</> : <>No payment information required</>}
         </p>
         {checkoutState === "error" && <p aria-live="polite" className="mt-3 rounded-lg border border-red-400/20 bg-red-400/[0.08] p-3 text-xs leading-5 text-red-200">{checkoutMessage}</p>}
       </div>

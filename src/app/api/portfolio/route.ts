@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { authorizedPlayer } from "@/lib/partners";
 import { quotaError, type BillingTier } from "@/lib/billing";
 import { normalizeProfileSlug, profileSlugError } from "@/lib/slug";
 import { validatePlayerDraft } from "@/lib/player-validation";
@@ -10,22 +12,20 @@ function slugify(player: Partial<Player>) {
   return normalizeProfileSlug([player.firstName, player.lastName].filter(Boolean).join("-")) || "player";
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
 
-  const { data, error } = await supabase
-    .from("players")
-    .select("*")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const playerId = request.nextUrl.searchParams.get("playerId");
+  const access = await authorizedPlayer(user.id, playerId, false);
+  const data = access?.player ?? null;
   return NextResponse.json({
     player: data ? rowToPlayer(data as PlayerRow) : null,
     userId: user.id,
+    managed: Boolean(access?.managed),
+    organization: access?.managed ? access.organization : null,
   });
 }
 
@@ -43,13 +43,10 @@ export async function PUT(request: NextRequest) {
   }
   const validationError = validatePlayerDraft(draft);
   if (validationError) return NextResponse.json({ error: validationError }, { status: 400 });
-  const { data: existing, error: lookupError } = await supabase
-    .from("players")
-    .select("id, slug, billing_tier")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (lookupError) return NextResponse.json({ error: lookupError.message }, { status: 500 });
+  const playerId = request.nextUrl.searchParams.get("playerId");
+  const access = await authorizedPlayer(user.id, playerId, true);
+  const existing = access?.player ?? null;
+  if (playerId && !access) return NextResponse.json({ error: "Managed athlete access was not found." }, { status: 404 });
 
   const tier = (existing?.billing_tier || "free") as BillingTier;
   const limitError = quotaError(draft, tier);
@@ -65,12 +62,11 @@ export async function PUT(request: NextRequest) {
   const row = {
     ...playerToRow(draft),
     slug,
-    user_id: user.id,
   };
 
   const query = existing
-    ? supabase.from("players").update(row).eq("user_id", user.id)
-    : supabase.from("players").insert(row);
+    ? createAdminClient().from("players").update(row).eq("id", existing.id)
+    : supabase.from("players").insert({ ...row, user_id: user.id });
 
   const { data, error } = await query.select("*").single();
   if (error) {

@@ -46,7 +46,8 @@ export async function proxy(request: NextRequest) {
       pathname.startsWith("/account") ||
       pathname.startsWith("/admin") ||
       pathname.startsWith("/builder") ||
-      pathname.startsWith("/dashboard")
+      pathname.startsWith("/dashboard") ||
+      pathname.startsWith("/partner")
     ) {
       return NextResponse.redirect(apexUrl(request, hostname));
     }
@@ -93,7 +94,8 @@ export async function proxy(request: NextRequest) {
   const needsAuth =
     pathname.startsWith("/account") ||
     pathname.startsWith("/dashboard") ||
-    pathname.startsWith("/admin");
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/partner");
   if (!needsAuth && pathname !== "/auth") return NextResponse.next({ request });
 
   let response = NextResponse.next({ request });
@@ -114,7 +116,7 @@ export async function proxy(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  if ((pathname.startsWith("/account") || pathname.startsWith("/dashboard") || pathname.startsWith("/admin")) && !user) {
+  if ((pathname.startsWith("/account") || pathname.startsWith("/dashboard") || pathname.startsWith("/admin") || pathname.startsWith("/partner")) && !user) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth";
     return NextResponse.redirect(url);

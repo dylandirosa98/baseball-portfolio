@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { BILLING_LIMITS, type BillingTier } from "@/lib/billing";
 import { createClient } from "@/lib/supabase/server";
+import { authorizedPlayer } from "@/lib/partners";
 
 const allowedKinds = new Set(["headshot", "hero", "logo", "media"]);
 const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif", "image/heic", "image/heif"]);
@@ -43,12 +44,10 @@ export async function POST(request: NextRequest) {
     if (file.size > maxBytes) return NextResponse.json({ error: "Image must be 15MB or smaller" }, { status: 400 });
     if (file.type && !allowedTypes.has(file.type)) return NextResponse.json({ error: "Unsupported image type" }, { status: 400 });
 
-    const { data: player, error: playerError } = await supabase
-      .from("players")
-      .select("billing_tier")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    if (playerError) throw new Error(playerError.message);
+    const playerId = request.nextUrl.searchParams.get("playerId");
+    const access = await authorizedPlayer(user.id, playerId, true);
+    if (playerId && !access) return NextResponse.json({ error: "Managed athlete access was not found." }, { status: 404 });
+    const player = access?.player;
 
     const tier = (player?.billing_tier || "free") as BillingTier;
     const directory = user.id + "/" + slug;

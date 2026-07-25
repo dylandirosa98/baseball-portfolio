@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import Image from "next/image";
 import type { MediaItem } from "@/lib/types";
 import { getMuxPlaybackId, getMuxThumbnailUrl } from "@/lib/video";
+import { managedApiPath } from "@/lib/managed-profile-client";
 
 interface MediaVideoUploadProps {
   item: MediaItem;
@@ -207,7 +208,7 @@ function uploadToMux(uploadUrl: string, file: File, onProgress: (progress: numbe
 
 async function waitForMuxPlayback(uploadId: string): Promise<UploadStatusResponse> {
   for (let attempt = 0; attempt < 90; attempt++) {
-    const response = await fetch(`/api/mux/uploads/${uploadId}`);
+    const response = await fetch(managedApiPath(`/api/mux/uploads/${uploadId}`));
     const data = (await response.json()) as UploadStatusResponse;
 
     if (!response.ok || data.error) {
@@ -256,7 +257,7 @@ export default function MediaVideoUpload({ item, slug, inputClass, labelClass, o
       setProgress(0);
       setStatus("Creating upload...");
 
-      const response = await fetch("/api/mux/uploads", {
+      const response = await fetch(managedApiPath("/api/mux/uploads"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: item.title || uploadFile.name, slug, fileSize: uploadFile.size }),

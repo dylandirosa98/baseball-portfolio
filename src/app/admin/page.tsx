@@ -20,6 +20,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getAdminMetrics } from "@/lib/admin-metrics";
 import AnalyticsChart from "@/components/dashboard/AnalyticsChart";
 import AdminUserTable from "@/components/admin/AdminUserTable";
+import AdminPartnerManager from "@/components/admin/AdminPartnerManager";
+import { isPlatformAdmin } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -29,14 +31,6 @@ function dollars(cents: number, maximumFractionDigits = 0) {
     currency: "USD",
     maximumFractionDigits,
   }).format(cents / 100);
-}
-
-function allowedAdmin(email?: string) {
-  const allowed = (process.env.ADMIN_EMAILS || "")
-    .split(",")
-    .map((item) => item.trim().toLowerCase())
-    .filter(Boolean);
-  return Boolean(email && allowed.includes(email.toLowerCase()));
 }
 
 function MetricCard({ label, value, note, icon: Icon, tone = "orange" }: {
@@ -68,7 +62,7 @@ export default async function AdminPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth");
-  if (!allowedAdmin(user.email)) notFound();
+  if (!isPlatformAdmin(user.email)) notFound();
 
   const metrics = await getAdminMetrics();
   const maxRevenue = Math.max(1, ...metrics.monthlyRevenue.map((month) => month.cents));
@@ -100,7 +94,7 @@ export default async function AdminPage() {
       <div className="mx-auto max-w-[1600px] space-y-6 px-4 py-6 sm:px-7 lg:px-10 lg:py-9">
         <section className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
           <div>
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-emerald-300"><ShieldCheck className="h-4 w-4" /> Read-only administration</div>
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-emerald-300"><ShieldCheck className="h-4 w-4" /> Private administration</div>
             <h2 className="mt-3 text-3xl font-black sm:text-5xl">Business command center</h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-white/40">Revenue, customers, portfolio activity, media usage, and managed-domain health from Stripe and Supabase.</p>
           </div>
@@ -205,6 +199,8 @@ export default async function AdminPage() {
         <section className="overflow-hidden rounded-2xl border border-white/10 bg-[#0a151e]">
           <AdminUserTable users={metrics.users} />
         </section>
+
+        <AdminPartnerManager />
 
         <footer className="flex flex-col justify-between gap-3 border-t border-white/10 py-5 text-xs text-white/25 sm:flex-row">
           <span>Diamond Profile internal operations</span>

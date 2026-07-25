@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { BILLING_LIMITS, type BillingTier } from "@/lib/billing";
 import { muxRequest } from "@/lib/mux";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { authorizedPlayer } from "@/lib/partners";
 
 type MuxCreateUploadResponse = {
   data: {
@@ -16,12 +18,10 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Create an account to upload videos." }, { status: 401 });
 
-    const { data: player, error: playerError } = await supabase
-      .from("players")
-      .select("billing_tier, mux_upload_count")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    if (playerError) throw new Error(playerError.message);
+    const playerId = request.nextUrl.searchParams.get("playerId");
+    const access = await authorizedPlayer(user.id, playerId, true);
+    if (playerId && !access) return NextResponse.json({ error: "Managed athlete access was not found." }, { status: 404 });
+    const player = access?.player;
 
     const tier = (player?.billing_tier || "free") as BillingTier;
     const uploadCount = player?.mux_upload_count ?? 0;
@@ -45,10 +45,11 @@ export async function POST(request: NextRequest) {
       userId: user.id,
     });
 
-    const { data: reserved, error: countError } = await supabase
+    const admin = createAdminClient();
+    const { data: reserved, error: countError } = await admin
       .from("players")
       .update({ mux_upload_count: uploadCount + 1 })
-      .eq("user_id", user.id)
+      .eq("id", player?.id || "")
       .eq("mux_upload_count", uploadCount)
       .select("mux_upload_count")
       .maybeSingle();
@@ -70,19 +71,20 @@ export async function POST(request: NextRequest) {
         }),
       });
 
-      const { error: uploadRecordError } = await supabase.from("mux_uploads").insert({
+      const { error: uploadRecordError } = await admin.from("mux_uploads").insert({
         upload_id: upload.data.id,
         user_id: user.id,
+        player_id: player?.id || null,
         status: "waiting",
       });
       if (uploadRecordError) throw new Error(uploadRecordError.message);
 
       return NextResponse.json({ uploadId: upload.data.id, uploadUrl: upload.data.url });
     } catch (error) {
-      await supabase
+      await admin
         .from("players")
         .update({ mux_upload_count: uploadCount })
-        .eq("user_id", user.id)
+        .eq("id", player?.id || "")
         .eq("mux_upload_count", uploadCount + 1);
       throw error;
     }

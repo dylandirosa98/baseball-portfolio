@@ -66,6 +66,14 @@ export interface TimelineEntry {
 
 export type PlayerDesign = "design-1" | "design-2" | "design-3";
 
+export interface ProfileBranding {
+  name: string;
+  logoUrl?: string;
+  primaryColor: string;
+  supportEmail?: string;
+  hideDiamondBranding: boolean;
+}
+
 export interface Player {
   slug: string;
   firstName: string;
