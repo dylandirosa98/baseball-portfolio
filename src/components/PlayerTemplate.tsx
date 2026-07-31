@@ -67,10 +67,11 @@ export default function PlayerTemplate({ player, branding }: PlayerTemplateProps
 
   const hasStats = Object.values(player.currentStats ?? {}).some((value) => Number(value) !== 0);
   const showStats = hasStats && (player.showStatsBar ?? true);
-  const academics = [
+  const academicItems = [
     { label: "School", value: player.school },
     { label: "GPA", value: player.gpa },
   ].filter((item) => item.value?.trim());
+  const hasAcademics = academicItems.length > 0 || Boolean(player.transcriptUrl?.trim());
 
   function renderSection(key: string) {
     switch (key) {
@@ -121,15 +122,20 @@ export default function PlayerTemplate({ player, branding }: PlayerTemplateProps
         </div>
       )}
 
-      {academics.length > 0 && (
+      {hasAcademics && (
         <section aria-label="Academic information" className="profile-academic-strip px-5 pt-3 lg:mx-auto lg:max-w-4xl">
           <div className="flex flex-wrap gap-x-6 gap-y-2 rounded-lg border border-white/10 bg-white/[0.035] px-4 py-3">
-            {academics.map((item) => (
+            {academicItems.map((item) => (
               <div key={item.label} className="flex items-baseline gap-2">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35">{item.label}</span>
-                <span className="text-sm font-semibold text-white/85">{item.value}</span>
+                <span className="profile-academic-label text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35">{item.label}</span>
+                <span className="profile-academic-value text-sm font-semibold text-white/85">{item.value}</span>
               </div>
             ))}
+            {player.transcriptUrl && (
+              <a className="profile-academic-link ml-auto text-xs font-semibold text-white/60 transition hover:text-white" href={player.transcriptUrl} target="_blank" rel="noopener noreferrer">
+                View transcript <span aria-hidden>↗</span>
+              </a>
+            )}
           </div>
         </section>
       )}

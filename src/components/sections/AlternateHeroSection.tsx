@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { ExternalLink, FileDown, GraduationCap, Play } from "lucide-react";
+import { ExternalLink, FileDown, Play } from "lucide-react";
 import PdfModal from "@/components/PdfModal";
 import VideoModal from "@/components/VideoModal";
 import { detectVideo } from "@/lib/video";
@@ -49,12 +49,6 @@ export default function AlternateHeroSection({ player, design }: AlternateHeroSe
           <FileDown aria-hidden className="h-4 w-4" />
           Resume
         </button>
-      )}
-      {player.transcriptUrl && (
-        <a className={actionClass} href={player.transcriptUrl} target="_blank" rel="noopener noreferrer">
-          <GraduationCap aria-hidden className="h-4 w-4" />
-          Academics
-        </a>
       )}
       {heroLinks.map((link, index) => (
         link.url ? (

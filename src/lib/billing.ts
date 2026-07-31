@@ -68,7 +68,7 @@ export function quotaError(player: Partial<Player>, tier: BillingTier) {
   }
   if (usage.muxVideos > limits.muxVideos) {
     return tier === "free"
-      ? "Professional in-app video uploads require Pro or Elite. Free portfolios can use YouTube embeds."
+      ? "Direct Diamond Profile video uploads require Pro or Elite. Free portfolios can use unlisted YouTube or other public video links."
       : "Pro includes up to 10 professionally hosted video uploads. Upgrade to Elite for fair-use unlimited in-app video uploads.";
   }
 

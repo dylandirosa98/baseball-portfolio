@@ -205,7 +205,7 @@ export default function ImageUpload({ slug, folder, currentUrl, onUpload }: Imag
               {hasImage ? "Replace photo" : "Upload photo"}
             </button>
           )}
-          <p className="text-xs leading-4 text-white/30">{isCutout ? "The background is removed automatically." : "JPG, PNG, WEBP, HEIC, or AVIF"}</p>
+          <p className="text-xs leading-4 text-white/30">{isCutout ? "Choose automatic background removal for a cutout, or upload the original unchanged. Maximum 15 MB." : "JPG, PNG, WEBP, HEIC, or AVIF. Maximum 15 MB."}</p>
         </div>
       </div>
 

@@ -295,7 +295,19 @@ export default function MediaVideoUpload({ item, slug, inputClass, labelClass, o
   return (
     <div className="space-y-3">
       <div>
-        <label className={labelClass}>Upload Video to Diamond Profile</label>
+        <label className={labelClass}>Video link</label>
+        <input
+          className={inputClass}
+          value={item.url}
+          onChange={(e) => onChange({ ...item, url: e.target.value, muxPlaybackId: undefined, muxAssetId: undefined, muxUploadId: undefined, thumbnailUrl: undefined })}
+          placeholder="Paste an unlisted YouTube, Vimeo, or public video link"
+        />
+        <p className="mt-1 text-[10px] leading-4 text-white/30">We recommend an unlisted YouTube video: it stays out of public search while coaches can watch it here. Private videos will not play, so allow embedding.</p>
+      </div>
+
+      <div className="border-t border-white/10 pt-3">
+        <label className={labelClass}>Upload the video file to Diamond Profile <span className="font-normal text-white/30">(Pro or Elite)</span></label>
+        <p className="mb-2 text-[10px] leading-4 text-white/30">Direct hosting creates a cleaner experience without sending coaches to another site. Pro includes 10 upload slots; Elite is fair-use unlimited. Maximum 2 GB per file.</p>
         <div
           onClick={() => !uploading && fileRef.current?.click()}
           className={`relative w-full aspect-video rounded-lg overflow-hidden bg-white/5 border border-white/10 transition-colors group ${
@@ -306,7 +318,7 @@ export default function MediaVideoUpload({ item, slug, inputClass, labelClass, o
             <Image src={thumbnailUrl} alt={item.title ?? "video thumbnail"} fill className="object-cover" unoptimized />
           ) : (
             <div className="flex h-full items-center justify-center text-xs text-white/30">
-              Click to upload video
+              Choose the actual video file
             </div>
           )}
           <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
@@ -340,16 +352,6 @@ export default function MediaVideoUpload({ item, slug, inputClass, labelClass, o
         {allowAudioChoice && (
           <p className="mt-1 text-[10px] text-white/25">After choosing a file, you can keep or permanently remove audio before it uploads to Diamond Profile.</p>
         )}
-      </div>
-
-      <div>
-        <label className={labelClass}>Video URL <span className="text-white/20 font-normal">(optional fallback)</span></label>
-        <input
-          className={inputClass}
-          value={item.url}
-          onChange={(e) => onChange({ ...item, url: e.target.value, muxPlaybackId: undefined, muxAssetId: undefined, muxUploadId: undefined, thumbnailUrl: undefined })}
-          placeholder="YouTube, Vimeo, Google Drive, or hosted video link"
-        />
       </div>
     </div>
   );

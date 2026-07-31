@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import MuxPlayer from "@mux/mux-player-react";
 import { Highlight } from "@/lib/types";
-import { detectVideo, getMuxPlaybackId, getMuxThumbnailUrl } from "@/lib/video";
+import { detectVideo, getMuxPlaybackId, getMuxThumbnailUrl, hasMediaSource } from "@/lib/video";
 
 function VideoSlide({ highlight, active }: { highlight: Highlight; active: boolean }) {
   const [playing, setPlaying] = useState(false);
@@ -164,8 +164,9 @@ export default function HighlightsSection({ highlights, lightMode }: HighlightsS
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState(0);
   const touchStartX = useRef<number | null>(null);
+  const visibleHighlights = highlights.filter(hasMediaSource);
 
-  if (highlights.length === 0) return null;
+  if (visibleHighlights.length === 0) return null;
 
   function go(next: number) {
     setDirection(next > index ? 1 : -1);
@@ -173,7 +174,7 @@ export default function HighlightsSection({ highlights, lightMode }: HighlightsS
   }
 
   function prev() { if (index > 0) go(index - 1); }
-  function next() { if (index < highlights.length - 1) go(index + 1); }
+  function next() { if (index < visibleHighlights.length - 1) go(index + 1); }
 
   return (
     <section data-profile-section="highlights" className="profile-section px-5 py-12 lg:max-w-4xl lg:mx-auto lg:py-16">
@@ -187,8 +188,8 @@ export default function HighlightsSection({ highlights, lightMode }: HighlightsS
         <div className="flex items-center gap-3 mb-6">
           <div className="w-1 h-6 rounded-full" style={{ backgroundColor: "var(--accent)" }} />
           <h2 className="text-xs font-bold tracking-[0.2em] uppercase text-white/50">Highlights</h2>
-          {highlights.length > 1 && (
-            <span className="ml-auto text-xs text-white/30">{index + 1} / {highlights.length}</span>
+          {visibleHighlights.length > 1 && (
+            <span className="ml-auto text-xs text-white/30">{index + 1} / {visibleHighlights.length}</span>
           )}
         </div>
 
@@ -218,13 +219,13 @@ export default function HighlightsSection({ highlights, lightMode }: HighlightsS
               exit="exit"
               transition={{ duration: 0.3, ease: "easeInOut" }}
             >
-              <VideoSlide highlight={highlights[index]} active={true} />
+              <VideoSlide highlight={visibleHighlights[index]} active={true} />
             </motion.div>
           </AnimatePresence>
         </div>
 
         {/* Controls */}
-        {highlights.length > 1 && (
+        {visibleHighlights.length > 1 && (
           <div className="flex items-center justify-center gap-4 mt-5">
             <button
               onClick={prev}
@@ -238,7 +239,7 @@ export default function HighlightsSection({ highlights, lightMode }: HighlightsS
 
             {/* Dots */}
             <div className="flex gap-1.5">
-              {highlights.map((_, i) => (
+              {visibleHighlights.map((_, i) => (
                 <button
                   key={i}
                   onClick={() => go(i)}
@@ -254,7 +255,7 @@ export default function HighlightsSection({ highlights, lightMode }: HighlightsS
 
             <button
               onClick={next}
-              disabled={index === highlights.length - 1}
+              disabled={index === visibleHighlights.length - 1}
               className="w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">

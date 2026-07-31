@@ -14,6 +14,7 @@ interface BioSectionProps {
 export default function BioSection({ player }: BioSectionProps) {
   const media = (player.media ?? []).filter(hasMediaSource);
   const defaultHeadshot = isPlaceholderPlayerImage(player.headshotUrl);
+  if (!player.bio.trim() && defaultHeadshot && media.length === 0) return null;
 
   return (
     <section data-profile-section="about" className="profile-section px-5 py-12 lg:max-w-4xl lg:mx-auto lg:py-16">

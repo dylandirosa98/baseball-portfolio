@@ -212,19 +212,6 @@ export default function HeroSection({ player }: HeroSectionProps) {
                 Resume
               </button>
             )}
-            {player.transcriptUrl && (
-              <a
-                href={player.transcriptUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-4 py-2 lg:px-5 lg:py-2.5 rounded-full text-xs lg:text-sm font-medium text-white/70 border border-white/15 hover:bg-white/5 transition-colors"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3">
-                  <path d="M12 14l9-5-9-5-9 5 9 5z"/><path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
-                </svg>
-                Academics
-              </a>
-            )}
             {player.socialLinks
               ?.filter((l) => l.showInHero)
               .map((l, i) => {

@@ -134,20 +134,20 @@ type Step = {
 };
 
 const steps: Step[] = [
-  { id: "info", label: "Basics", caption: "Name, team, player details", icon: CircleUserRound },
+  { id: "info", label: "Basics", caption: "Identity, team, and optional academics", icon: CircleUserRound },
   { id: "photos", label: "Photos", caption: "Your key profile images", icon: ImageIcon },
   { id: "style", label: "Design", caption: "Colors and page style", icon: Paintbrush },
-  { id: "stats", label: "Stats", caption: "Current season numbers", icon: BarChart3 },
+  { id: "stats", label: "Stats", caption: "Optional current season numbers", icon: BarChart3 },
   { id: "content", label: "Story", caption: "Bio, media, and highlights", icon: PanelsTopLeft },
   { id: "links", label: "Links", caption: "Socials and documents", icon: Link2 },
   { id: "review", label: "Launch", caption: "Choose a plan and go live", icon: Rocket },
 ];
 
 const editorStepCopy: Record<StepId, { label: string; caption: string }> = {
-  info: { label: "Player details", caption: "Identity, team, and measurements" },
+  info: { label: "Player details", caption: "Identity, team, measurements, and academics" },
   photos: { label: "Photos", caption: "Hero image, headshot, and logo" },
   style: { label: "Design", caption: "Template, colors, and appearance" },
-  stats: { label: "Stats", caption: "Current season numbers" },
+  stats: { label: "Stats", caption: "Optional current season numbers" },
   content: { label: "Story & media", caption: "Bio, skills, videos, and highlights" },
   links: { label: "Links", caption: "Social profiles and documents" },
   review: { label: "Publishing", caption: "Address, plan, and domain" },
@@ -221,6 +221,21 @@ const pitcherStats: [keyof PlayerStats, string][] = [
   ["whip", "WHIP"],
   ["strikeoutsPitched", "K"],
 ];
+
+const statDescriptions: Partial<Record<keyof PlayerStats, string>> = {
+  gamesPlayed: "Games played",
+  battingAverage: "Batting average",
+  onBasePercentage: "On-base percentage",
+  sluggingPercentage: "Slugging percentage",
+  homeRuns: "Home runs",
+  runsBattedIn: "Runs batted in",
+  inningsPitched: "Innings pitched",
+  wins: "Wins",
+  losses: "Losses",
+  earnedRunAverage: "Earned run average",
+  whip: "Walks and hits per inning pitched",
+  strikeoutsPitched: "Strikeouts",
+};
 
 const inputClass = "min-h-12 w-full rounded-lg border border-white/10 bg-[#151515] px-3.5 py-3 text-base text-white outline-none transition placeholder:text-white/25 focus:border-red-400 focus:ring-2 focus:ring-red-500/15";
 const labelClass = "mb-2 block text-xs font-medium text-white/60";
@@ -967,7 +982,7 @@ function InfoStep({ draft, update, editing }: { draft: Player; update: (updates:
     <div>
       <SectionHeader
         title={editing ? "Player details" : "Player basics"}
-        body={editing ? "Update the information shown throughout the live profile." : "Start with the details a coach needs to recognize the player."}
+        body={editing ? "Update the public details coaches use to identify the player." : "Add the details coaches use to identify the player. Only the player name is required; everything else can be added later."}
       />
       <div className="grid grid-cols-2 gap-3">
         <Field label="First name">
@@ -1047,7 +1062,7 @@ function InfoStep({ draft, update, editing }: { draft: Player; update: (updates:
 
       <details className="mt-5 border-t border-white/10 pt-4">
         <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between text-sm font-semibold text-white/65">
-          More player details
+          More player details and academics
           <span className="text-xs font-normal text-white/30">Optional</span>
         </summary>
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -1144,6 +1159,7 @@ function InfoStep({ draft, update, editing }: { draft: Player; update: (updates:
               onChange={(event) => update({ gpa: event.target.value })}
               placeholder="3.8 / 4.0"
             />
+            <span className="mt-1 block text-[10px] leading-4 text-white/30">Include the scale when possible. Academics are optional and only completed fields appear publicly.</span>
           </Field>
         </div>
       </details>
@@ -1158,7 +1174,7 @@ function PhotosStep({ draft, update, editing }: { draft: Player; update: (update
     <div>
       <SectionHeader
         title={editing ? "Profile photos" : "Add your photos"}
-        body={editing ? "Replace the hero image, headshot, or team logo shown on the profile." : "Strong images make the biggest difference. You can replace any photo later."}
+        body={editing ? "Replace the hero image, headshot, or team logo shown on the profile." : "Strong, current images help coaches recognize the player quickly. Every photo can be replaced later."}
       />
       <div className="divide-y divide-white/10 border-y border-white/10">
         <div className="py-5">
@@ -1169,11 +1185,6 @@ function PhotosStep({ draft, update, editing }: { draft: Player; update: (update
           <p className="mt-1 text-xs text-white/35">Add a clear square photo, or keep the default player silhouette.</p>
           <div className="mt-3">
             <ImageUpload slug={uploadSlug} folder="headshot" currentUrl={draft.headshotUrl} onUpload={(url) => update({ headshotUrl: url })} />
-          </div>
-          <div className="mt-4">
-            <Field label="Bio">
-              <textarea className={inputClass} rows={5} value={draft.bio} onChange={(e) => update({ bio: e.target.value })} />
-            </Field>
           </div>
         </div>
         <div className="py-5">
@@ -1200,6 +1211,7 @@ function PhotosStep({ draft, update, editing }: { draft: Player; update: (update
           <span className="text-xs font-normal text-white/30">Advanced</span>
         </summary>
         <div className="mt-4 space-y-4">
+          <p className="text-xs leading-5 text-white/35">Use direct HTTPS image links that open publicly and will remain available to coaches.</p>
           <Field label="Headshot URL (optional)"><input className={inputClass} type="url" inputMode="url" value={draft.headshotUrl} onChange={(event) => update({ headshotUrl: event.target.value })} /></Field>
           <Field label="Main photo URL"><input className={inputClass} type="url" inputMode="url" value={draft.heroImageUrl} onChange={(event) => update({ heroImageUrl: event.target.value })} /></Field>
           <Field label="Team logo URL"><input className={inputClass} type="url" inputMode="url" value={draft.teamLogoUrl ?? ""} onChange={(event) => update({ teamLogoUrl: event.target.value })} /></Field>
@@ -1263,7 +1275,7 @@ function StyleStep({ draft, update, editing }: { draft: Player; update: (updates
     <div>
       <SectionHeader
         title={editing ? "Site design" : "Make it feel personal"}
-        body={editing ? "Change the template, colors, image scale, or appearance. The preview updates instantly." : "Pick a team color and the page appearance. The preview updates instantly."}
+        body={editing ? "Change the template, colors, image scale, or appearance. The preview updates instantly." : "Pick a template and team color. Every design uses the same content, so switching designs will not remove anything."}
       />
       <div className="space-y-5">
         <fieldset>
@@ -1377,11 +1389,11 @@ function StatsStep({ draft, update, editing }: { draft: Player; update: (updates
     <div>
       <SectionHeader
         title={editing ? "Season stats" : "Current season stats"}
-        body={editing ? "Update the numbers shown on the profile, or hide them while they are incomplete." : "Add what you have now or skip this step and return later."}
+        body={editing ? "Update the headline numbers coaches see beneath the player details, or hide them while they are incomplete." : "Add the current numbers you want coaches to see first. This step is optional and can be updated anytime."}
       />
       <div className="grid grid-cols-2 gap-3">
         {fields.map(([key, label]) => (
-          <Field key={key} label={label}>
+          <Field key={key} label={`${label} · ${statDescriptions[key] ?? "Stat"}`}>
             <input
               className={inputClass}
               type="number"
@@ -1416,7 +1428,7 @@ type ContentPanel = "skills" | "media" | "highlights" | "training" | "interests"
 type ContentIndexes = Record<ContentPanel, number> & { skillVideos: number };
 
 const contentTabs: { id: ContentPanel; label: string }[] = [
-  { id: "skills", label: "Player Profile" },
+  { id: "skills", label: "Skills" },
   { id: "media", label: "Main Media" },
   { id: "highlights", label: "Highlights" },
   { id: "training", label: "Training" },
@@ -1453,8 +1465,20 @@ function ContentStep({ draft, update, editing }: { draft: Player; update: (updat
     <div>
       <SectionHeader
         title={editing ? "Story & media" : "Build the story"}
-        body={editing ? "Manage the bio, skills, photos, videos, highlights, and off-field content." : "Start with the skill cards and add only the sections that help tell the player's story."}
+        body={editing ? "Manage the bio, skills, photos, videos, highlights, and off-field content." : "Add only the information that helps a coach understand the player quickly. Empty sections stay off the public profile."}
       />
+      <div className="mb-5">
+        <Field label="Player bio">
+          <textarea
+            className={inputClass}
+            rows={5}
+            value={draft.bio}
+            onChange={(event) => update({ bio: event.target.value })}
+            placeholder="Summarize the player, goals, strengths, and recruiting story."
+          />
+        </Field>
+        <p className="mt-1 text-[10px] leading-4 text-white/30">Keep it concise and specific. Coaches can scan the stats and film for the rest.</p>
+      </div>
       <div className="mb-5">
         <div className="mb-2 flex items-center justify-end gap-2">
           <span className="mr-1 text-[11px] font-medium text-white/40">Scroll sections</span>
@@ -1692,7 +1716,7 @@ function SkillsContentEditor({
         count={skills.length}
         index={index}
         addLabel="Add Skill"
-        emptyText="Add the first player profile skill card"
+        emptyText="Add a skill coaches should notice"
         onIndex={(value) => onSkillIndex(Math.max(0, Math.min(skills.length - 1, value)))}
         onAdd={() => {
           setSkills([...skills, { name: "", description: "", videoDisplay: "button", videos: [] }]);
@@ -1832,7 +1856,7 @@ function HighlightsContentEditor({ highlights, index, uploadSlug, onIndex, onCha
 
   return (
     <div className="space-y-4">
-      <SectionHeader title="Highlights" body="Edit one highlight video at a time." />
+      <SectionHeader title="Highlights" body="Add short, clearly titled game or showcase clips that coaches can scan quickly." />
       <CarouselEditor
         title="Highlights"
         count={highlights.length}
@@ -1890,11 +1914,11 @@ function TrainingContentEditor({ draft, index, uploadSlug, onIndex, onChange, up
 
   return (
     <div className="space-y-4">
-      <SectionHeader title="Training" body="Edit one training slide at a time." />
+      <SectionHeader title="Training" body="Add training footage that shows development, mechanics, or preparation." />
       <Field label="Shared Training Description"><textarea className={inputClass} rows={3} value={draft.trainingDescription ?? ""} onChange={(e) => update({ trainingDescription: e.target.value })} /></Field>
       <MediaContentEditor
         title="Training Slides"
-        body="Each slide can have its own title and professionally hosted video."
+        body="Each slide can use an unlisted YouTube link or a directly hosted Pro or Elite upload."
         items={mediaItems}
         index={index}
         uploadSlug={uploadSlug}
@@ -1910,7 +1934,7 @@ function TrainingContentEditor({ draft, index, uploadSlug, onIndex, onChange, up
 function InterestsContentEditor({ draft, index, uploadSlug, onIndex, onChange, update }: { draft: Player; index: number; uploadSlug: string; onIndex: (index: number) => void; onChange: (items: MediaItem[]) => void; update: (updates: Partial<Player>) => void }) {
   return (
     <div className="space-y-4">
-      <SectionHeader title="Off the Field" body="Add the section text, then edit one media slide at a time." />
+      <SectionHeader title="Off the Field" body="Optional context about character, interests, leadership, or community involvement." />
       <Field label="Section Text"><textarea className={inputClass} rows={4} value={draft.interests ?? ""} onChange={(e) => update({ interests: e.target.value })} /></Field>
       <MediaContentEditor
         title="Off the Field Media"
@@ -2028,15 +2052,15 @@ function LinksStep({ draft, update, editing }: { draft: Player; update: (updates
     <div>
       <SectionHeader
         title={editing ? "Links & documents" : "Add useful links"}
-        body={editing ? "Update social profiles, recruiting pages, resume, and transcript." : "Bring social profiles, recruiting pages, and documents into one place."}
+        body={editing ? "Update the public links and documents a coach may want to verify." : "Bring public recruiting profiles and optional documents into one place for coaches."}
       />
 
       <div className="space-y-4 border-y border-white/10 py-5">
         <div>
           <h3 className="text-sm font-semibold text-white/80">Documents</h3>
-          <p className="mt-1 text-xs text-white/35">Optional links to files already stored online.</p>
+          <p className="mt-1 text-xs leading-5 text-white/35">Optional. Use view-only HTTPS links that open without requiring a coach to sign in.</p>
         </div>
-        <Field label="Player resume">
+        <Field label="Player resume link (optional)">
           <input
             className={inputClass}
             type="url"
@@ -2046,7 +2070,7 @@ function LinksStep({ draft, update, editing }: { draft: Player; update: (updates
             placeholder="https://"
           />
         </Field>
-        <Field label="School transcript">
+        <Field label="Transcript link (optional)">
           <input
             className={inputClass}
             type="url"
@@ -2055,6 +2079,7 @@ function LinksStep({ draft, update, editing }: { draft: Player; update: (updates
             onChange={(event) => update({ transcriptUrl: event.target.value })}
             placeholder="https://"
           />
+          <span className="mt-1 block text-[10px] leading-4 text-white/30">This link is public to anyone with the profile. Confirm it opens without signing in before publishing.</span>
         </Field>
       </div>
 
@@ -2062,7 +2087,7 @@ function LinksStep({ draft, update, editing }: { draft: Player; update: (updates
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
             <h3 className="text-sm font-semibold text-white/80">Profile links</h3>
-            <p className="mt-1 text-xs text-white/35">{links.length ? `${links.length} added` : "Add social or recruiting profiles"}</p>
+            <p className="mt-1 text-xs text-white/35">{links.length ? `${links.length} added` : "Add social or recruiting profiles a coach may want to verify"}</p>
           </div>
           <button
             type="button"
@@ -2159,9 +2184,9 @@ type DomainState = "idle" | "checking" | "available" | "unavailable" | "error";
 type SlugState = "idle" | "checking" | "available" | "unavailable" | "error";
 
 const launchPlans = [
-  { id: "free" as const, name: "Free", price: 0, description: "A complete hosted player profile with generous embedded media.", features: ["10 portfolio images", "5 embedded YouTube videos", "Free Diamond Profile hosting"] },
-  { id: "pro" as const, name: "Pro", price: 15, description: "Professional video hosting and performance insights.", features: ["25 portfolio images", "10 professionally hosted video uploads", "Portfolio and video analytics"] },
-  { id: "elite" as const, name: "Elite", price: 25, description: "Maximum flexibility for players with an extensive body of work.", features: ["Fair-use unlimited images", "Fair-use unlimited professionally hosted videos", "Portfolio and video analytics"] },
+  { id: "free" as const, name: "Free", price: 0, description: "A complete hosted player profile using public or unlisted video links.", features: ["10 portfolio images", "5 embedded video links", "All three profile designs", "Free Diamond Profile hosting"] },
+  { id: "pro" as const, name: "Pro", price: 15, description: "Cleaner direct video hosting and performance insights.", features: ["25 portfolio images", "25 embedded video links", "10 direct Diamond Profile video uploads", "Portfolio and video analytics"] },
+  { id: "elite" as const, name: "Elite", price: 25, description: "Maximum flexibility for players with an extensive body of work.", features: ["Fair-use unlimited images", "Fair-use unlimited embedded videos", "Fair-use unlimited direct video uploads", "Portfolio and video analytics"] },
 ];
 
 function suggestedDomain(draft: Player) {
@@ -2454,7 +2479,7 @@ function ReviewStep({ draft, update, checkoutResult, isPublished, editing, manag
 
       <div className="mb-6">
         <div className="mb-3 flex items-end justify-between gap-3">
-          <div><h3 className="text-sm font-semibold text-white/85">Profile check</h3><p className="mt-0.5 text-xs text-white/35">Missing items will not block publishing.</p></div>
+          <div><h3 className="text-sm font-semibold text-white/85">Recommended before sharing</h3><p className="mt-0.5 text-xs text-white/35">Only the player name and an available profile address are required. Everything below can be added later.</p></div>
           <span className="text-xs font-semibold text-white/45">{readyCount} of {checks.length} ready</span>
         </div>
         <div className="divide-y divide-white/[0.06] border-y border-white/[0.08]">
@@ -2537,7 +2562,7 @@ function ReviewStep({ draft, update, checkoutResult, isPublished, editing, manag
           {checkoutState === "loading" ? <><LoaderCircle className="h-4 w-4 animate-spin" />{!managedByPartner && needsCheckout ? "Opening checkout" : "Saving changes"}</> : <>{managedByPartner ? isPublished ? "Save profile changes" : "Publish managed profile" : needsCheckout ? "Continue to secure checkout" : isPublished ? "Save changes and return" : currentTier === "free" ? "Publish free" : "Publish profile"}<ArrowRight className="h-4 w-4" /></>}
         </button>
         <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-[11px] text-white/30">
-          {managedByPartner ? <>Your organization manages this profile&apos;s access</> : needsCheckout ? <><LockKeyhole className="h-3.5 w-3.5" />Payment is completed securely with Stripe</> : isPublished ? <>Your live website stays online while changes save</> : <>No payment information required</>}
+          {managedByPartner ? <>Your organization manages this profile&apos;s access</> : needsCheckout ? <><LockKeyhole className="h-3.5 w-3.5" />{!isPublished ? "Your profile publishes on Free before secure Stripe checkout; paid features unlock after confirmation" : "Payment is completed securely with Stripe"}</> : isPublished ? <>Your live website stays online while changes save</> : <>No payment information required</>}
         </p>
         {checkoutState === "error" && <p aria-live="polite" className="mt-3 rounded-lg border border-red-400/20 bg-red-400/[0.08] p-3 text-xs leading-5 text-red-200">{checkoutMessage}</p>}
       </div>

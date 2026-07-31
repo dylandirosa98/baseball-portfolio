@@ -20,7 +20,7 @@ export default function InterestsSection({ player }: { player: Player }) {
         <div className="flex items-center gap-3 mb-5">
           <div className="w-1 h-6 rounded-full" style={{ backgroundColor: "var(--accent)" }} />
           <h2 className="text-xs font-bold tracking-[0.2em] uppercase text-white/50">
-            Outside the Rink
+            Off the Field
           </h2>
         </div>
         {player.interests && (

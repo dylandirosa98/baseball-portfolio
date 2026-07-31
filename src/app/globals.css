@@ -261,6 +261,7 @@ body {
 }
 
 .profile-design-2 .profile-info-strip,
+.profile-design-2 .profile-academic-strip,
 .profile-design-2 .profile-section,
 .profile-design-2 footer {
   max-width: 1120px !important;
@@ -477,6 +478,10 @@ body {
   backdrop-filter: blur(20px);
 }
 
+.profile-design-3 .profile-academic-strip {
+  max-width: 920px !important;
+}
+
 .profile-design-3 .profile-section,
 .profile-design-3 footer {
   max-width: 920px !important;
@@ -580,8 +585,23 @@ body {
 }
 
 .player-light.profile-design-2 .profile-section,
-.player-light.profile-design-2 .profile-info-strip {
+.player-light.profile-design-2 .profile-info-strip,
+.player-light.profile-design-2 .profile-academic-strip > div {
   background: rgb(255 255 255 / 0.48);
+}
+
+.player-light .profile-academic-strip > div {
+  border-color: rgb(0 0 0 / 0.13);
+  background: rgb(0 0 0 / 0.04);
+}
+
+.player-light .profile-academic-label {
+  color: #777;
+}
+
+.player-light .profile-academic-value,
+.player-light .profile-academic-link {
+  color: #222;
 }
 
 .player-light.profile-design-3 {
