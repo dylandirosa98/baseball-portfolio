@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { notifyNewAccount } from "@/lib/account-notifications";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
@@ -20,6 +21,16 @@ export async function GET(request: NextRequest) {
             terms_accepted_at: new Date().toISOString(),
           },
         });
+      }
+      if (next.includes("signup=1") && data.user) {
+        const createdAt = new Date(data.user.created_at).getTime();
+        if (Number.isFinite(createdAt) && Date.now() - createdAt <= 60 * 60 * 1000) {
+          try {
+            await notifyNewAccount(data.user);
+          } catch (notificationError) {
+            console.error("New-account notification failed", notificationError);
+          }
+        }
       }
       return NextResponse.redirect(new URL(next, request.url));
     }

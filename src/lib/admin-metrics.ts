@@ -84,6 +84,7 @@ function monthLabel(key: string) {
 
 export type AdminUserSummary = {
   id: string;
+  playerId: string;
   email: string;
   name: string;
   slug: string;
@@ -224,6 +225,7 @@ export async function getAdminMetrics() {
           : "No portfolio yet";
         return {
           id: authUser.id,
+          playerId: "",
           email: authUser.email || "No email",
           name: metadataName,
           slug: "",
@@ -241,6 +243,7 @@ export async function getAdminMetrics() {
       const engagement = analyticsByPlayer.get(player.id) || { views: 0, videoPlays: 0 };
       return {
         id: player.user_id,
+        playerId: player.id,
         email: authUser.email || "No email",
         name: [player.first_name, player.last_name].filter(Boolean).join(" ") || "Unnamed player",
         slug: player.slug,

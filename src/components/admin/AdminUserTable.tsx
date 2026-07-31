@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { ExternalLink, Eye, Search } from "lucide-react";
 import type { AdminUserSummary } from "@/lib/admin-metrics";
 import { profileUrl } from "@/lib/slug";
 
@@ -63,7 +63,20 @@ export default function AdminUserTable({ users }: { users: AdminUserSummary[] })
                 <td className="px-4 py-4 capitalize text-white/50">{user.subscriptionStatus}</td>
                 <td className="px-4 py-4">
                   {user.slug ? (
-                    <><a href={profileUrl(user.slug)} target="_blank" rel="noreferrer" className="font-semibold text-white/70 hover:text-white">{user.slug}</a><p className="mt-1 text-white/30">{user.published ? "Published" : "Draft"}</p></>
+                    <>
+                      <a href={`/admin/portfolios/${user.playerId}/preview`} target="_blank" rel="noreferrer" className="font-semibold text-white/70 hover:text-white">{user.slug}</a>
+                      <p className="mt-1 text-white/30">{user.published ? "Published" : "Draft"}</p>
+                      <div className="mt-2 flex items-center gap-3">
+                        <a href={`/admin/portfolios/${user.playerId}/preview`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-sky-200/70 hover:text-sky-100">
+                          <Eye className="h-3.5 w-3.5" /> {user.published ? "Preview" : "Preview draft"}
+                        </a>
+                        {user.published && (
+                          <a href={profileUrl(user.slug)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-white/45 hover:text-white">
+                            Live <ExternalLink className="h-3 w-3" />
+                          </a>
+                        )}
+                      </div>
+                    </>
                   ) : <span className="text-white/30">Not started</span>}
                 </td>
                 <td className="px-4 py-4 text-white/50">{user.views.toLocaleString()} views · {user.videoPlays.toLocaleString()} plays</td>

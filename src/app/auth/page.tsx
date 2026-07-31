@@ -66,6 +66,14 @@ function AuthContent() {
         setLoadingAction(null);
         return;
       }
+      if (data.user?.id) {
+        void fetch("/api/auth/account-created", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: data.user.id }),
+          keepalive: true,
+        });
+      }
       if (!data.session) {
         setState("sent");
         setMessage("Check your email to confirm your account. Your draft stays saved on this device.");
