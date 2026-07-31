@@ -67,6 +67,10 @@ export default function PlayerTemplate({ player, branding }: PlayerTemplateProps
 
   const hasStats = Object.values(player.currentStats ?? {}).some((value) => Number(value) !== 0);
   const showStats = hasStats && (player.showStatsBar ?? true);
+  const academics = [
+    { label: "School", value: player.school },
+    { label: "GPA", value: player.gpa },
+  ].filter((item) => item.value?.trim());
 
   function renderSection(key: string) {
     switch (key) {
@@ -115,6 +119,19 @@ export default function PlayerTemplate({ player, branding }: PlayerTemplateProps
             ))}
           </div>
         </div>
+      )}
+
+      {academics.length > 0 && (
+        <section aria-label="Academic information" className="profile-academic-strip px-5 pt-3 lg:mx-auto lg:max-w-4xl">
+          <div className="flex flex-wrap gap-x-6 gap-y-2 rounded-lg border border-white/10 bg-white/[0.035] px-4 py-3">
+            {academics.map((item) => (
+              <div key={item.label} className="flex items-baseline gap-2">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35">{item.label}</span>
+                <span className="text-sm font-semibold text-white/85">{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
       {showStats && <StatsBar stats={player.currentStats} position={player.position} />}

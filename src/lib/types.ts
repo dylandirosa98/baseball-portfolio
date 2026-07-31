@@ -88,6 +88,8 @@ export interface Player {
   bats: "Left" | "Right" | "Switch";
   throws: "Left" | "Right";
   birthYear: number;
+  school?: string;
+  gpa?: string;
   bio: string;
   headshotUrl: string;
   heroImageUrl: string;

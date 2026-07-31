@@ -17,6 +17,8 @@ export interface PlayerRow {
   bats: "Left" | "Right" | "Switch";
   throws: "Left" | "Right";
   birth_year: number;
+  school: string | null;
+  gpa: string | null;
   bio: string;
   headshot_url: string;
   hero_image_url: string;
@@ -81,6 +83,8 @@ export function rowToPlayer(row: PlayerRow, options: RowToPlayerOptions = {}): P
     bats: row.bats,
     throws: row.throws,
     birthYear: row.birth_year,
+    school: row.school ?? undefined,
+    gpa: row.gpa ?? undefined,
     bio: row.bio,
     headshotUrl: row.headshot_url,
     heroImageUrl: row.hero_image_url,
@@ -174,6 +178,8 @@ export function playerToRow(player: Partial<Player>): Record<string, unknown> {
   if (player.bats !== undefined) row.bats = player.bats;
   if (player.throws !== undefined) row.throws = player.throws;
   if (player.birthYear !== undefined) row.birth_year = player.birthYear;
+  if (player.school !== undefined) row.school = player.school || null;
+  if (player.gpa !== undefined) row.gpa = player.gpa || null;
   if (player.bio !== undefined) row.bio = player.bio;
   if (player.headshotUrl !== undefined) row.headshot_url = player.headshotUrl;
   if (player.heroImageUrl !== undefined) row.hero_image_url = player.heroImageUrl;

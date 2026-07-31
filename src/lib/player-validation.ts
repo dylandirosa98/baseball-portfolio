@@ -55,6 +55,8 @@ export function validatePlayerDraft(player: Partial<Player>) {
     ["Team", player.team, 120],
     ["League", player.league, 120],
     ["Hometown", player.hometown, 120],
+    ["School", player.school, 160],
+    ["GPA", player.gpa, 32],
     ["Biography", player.bio, 5000],
   ];
   for (const [label, value, max] of boundedText) {

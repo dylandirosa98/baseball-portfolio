@@ -89,6 +89,8 @@ const defaultDraft: Player = {
   bats: "Right",
   throws: "Right",
   birthYear: 0,
+  school: "",
+  gpa: "",
   bio: "",
   headshotUrl: DEFAULT_PLAYER_IMAGE,
   heroImageUrl: DEFAULT_PLAYER_IMAGE,
@@ -1124,6 +1126,23 @@ function InfoStep({ draft, update, editing }: { draft: Player; update: (updates:
               value={draft.birthYear || ""}
               onChange={(event) => update({ birthYear: event.target.value === "" ? 0 : Number(event.target.value) })}
               placeholder="2008"
+            />
+          </Field>
+          <Field label="School">
+            <input
+              className={inputClass}
+              value={draft.school ?? ""}
+              onChange={(event) => update({ school: event.target.value })}
+              autoComplete="organization"
+              placeholder="Example High School"
+            />
+          </Field>
+          <Field label="GPA">
+            <input
+              className={inputClass}
+              value={draft.gpa ?? ""}
+              onChange={(event) => update({ gpa: event.target.value })}
+              placeholder="3.8 / 4.0"
             />
           </Field>
         </div>
