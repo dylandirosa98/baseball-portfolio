@@ -11,6 +11,7 @@ import {
   CreditCard,
   Film,
   Globe2,
+  Images,
   LayoutDashboard,
   ShieldCheck,
   TrendingDown,
@@ -85,9 +86,7 @@ export default async function AdminPage() {
               <h1 className="text-lg font-black">Diamond Profile Admin</h1>
             </div>
           </div>
-          <Link href="/dashboard" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/10 px-4 text-sm font-bold text-white/60 hover:text-white">
-            <ArrowLeft className="h-4 w-4" /> User dashboard
-          </Link>
+          <div className="flex items-center gap-2"><Link href="/admin/content" className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#e5162a] px-4 text-sm font-black text-white"><Images className="h-4 w-4" /> Content</Link><Link href="/dashboard" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/10 px-4 text-sm font-bold text-white/60 hover:text-white"><ArrowLeft className="h-4 w-4" /> <span className="hidden sm:inline">User dashboard</span></Link></div>
         </div>
       </header>
 
