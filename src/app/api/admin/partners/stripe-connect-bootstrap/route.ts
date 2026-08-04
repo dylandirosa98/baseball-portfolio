@@ -53,9 +53,22 @@ export async function POST(request: NextRequest) {
   let createdThin = false;
   try {
     if (!process.env.STRIPE_CONNECT_WEBHOOK_SECRET) {
-      const endpoints = await stripe.webhookEndpoints.list({ limit: 100 });
-      const existing = endpoints.data.find((endpoint) => endpoint.url === snapshotUrl && (endpoint as Stripe.WebhookEndpoint & { connect?: boolean }).connect === true);
-      if (existing) throw new Error("The connected-payment webhook exists but its signing secret is not installed. Reveal it in Stripe and add STRIPE_CONNECT_WEBHOOK_SECRET to Vercel.");
+      // Current Stripe responses expose Connect routing through Event
+      // Destinations (`@accounts`) rather than the legacy WebhookEndpoint
+      // object's `connect` field. Inspect the canonical destination view so a
+      // missing local secret never causes a duplicate live endpoint.
+      let existingConnectedDestination = false;
+      for await (const destination of stripe.v2.core.eventDestinations.list({ limit: 100, include: ["webhook_endpoint.url"] })) {
+        if (
+          destination.event_payload === "snapshot"
+          && destination.events_from?.includes("@accounts")
+          && destination.webhook_endpoint?.url === snapshotUrl
+        ) {
+          existingConnectedDestination = true;
+          break;
+        }
+      }
+      if (existingConnectedDestination) throw new Error("The connected-payment webhook exists but its signing secret is not installed. Add its creation-time signing secret as STRIPE_CONNECT_WEBHOOK_SECRET in Vercel.");
       snapshotEndpoint = await stripe.webhookEndpoints.create({
         url: snapshotUrl,
         connect: true,
