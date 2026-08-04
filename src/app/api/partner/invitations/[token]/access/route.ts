@@ -15,6 +15,7 @@ export async function POST(_request: Request, context: { params: Promise<{ token
     partner_organizations: PartnerOrganizationRow | null;
   };
   if (!row.players || !row.partner_organizations) return NextResponse.json({ error: "This invitation is unavailable." }, { status: 409 });
+  if (row.partner_organizations.status !== "active") return NextResponse.json({ error: "This organization is not currently accepting athlete invitations." }, { status: 409 });
   if (row.last_sent_at && Date.now() - new Date(row.last_sent_at).getTime() < 60_000) {
     return NextResponse.json({ error: "A secure link was just sent. Please check the athlete's inbox." }, { status: 429 });
   }

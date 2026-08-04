@@ -7,10 +7,10 @@ import type { PartnerOrganizationRow } from "@/lib/partners";
 export async function GET(_request: Request, context: { params: Promise<{ token: string }> }) {
   const { token } = await context.params;
   const admin = createAdminClient();
-  const result = await admin.from("partner_profile_checkouts").select("id, token, active, player_id, organization_id, partner_payment_links(id, stripe_price_id, active, tier), partner_organizations(*), players(first_name,last_name,invited_email,partner_billing_status)").eq("token", token).maybeSingle();
+  const result = await admin.from("partner_profile_checkouts").select("id, token, active, player_id, organization_id, last_checkout_session_id, partner_payment_links(id, stripe_price_id, active, tier), partner_organizations(*), players(first_name,last_name,invited_email,partner_billing_status)").eq("token", token).maybeSingle();
   if (result.error || !result.data) return NextResponse.redirect(new URL("/?checkout=invalid", process.env.NEXT_PUBLIC_APP_URL));
   const row = result.data as unknown as {
-    id: string; token: string; active: boolean; player_id: string; organization_id: string;
+    id: string; token: string; active: boolean; player_id: string; organization_id: string; last_checkout_session_id: string | null;
     partner_payment_links: { id: string; stripe_price_id: string | null; active: boolean; tier: string } | null;
     partner_organizations: PartnerOrganizationRow | null;
     players: { first_name: string; last_name: string; invited_email: string | null; partner_billing_status: string } | null;
@@ -22,6 +22,17 @@ export async function GET(_request: Request, context: { params: Promise<{ token:
     return NextResponse.redirect(new URL(`/join/${token}`, partnerJoinOrigin(row.partner_organizations)));
   }
   try {
+    if (row.last_checkout_session_id) {
+      try {
+        const previous = await getStripe().checkout.sessions.retrieve(row.last_checkout_session_id, {}, { stripeAccount: row.partner_organizations.stripe_account_id });
+        if (previous.status === "open" && previous.url) return NextResponse.redirect(previous.url);
+        if (previous.status === "complete" && previous.payment_status === "paid") {
+          return NextResponse.redirect(`${getAppUrl()}/dashboard?checkout=success&partner_billing=pending&session_id=${previous.id}`);
+        }
+      } catch (error) {
+        console.warn("Previous connected checkout session could not be reused", error);
+      }
+    }
     // This is a direct subscription charge on the partner's connected account.
     // Diamond Profile's wholesale seat is billed separately to the organization,
     // so no application fee is deducted from the athlete's retail price here.
