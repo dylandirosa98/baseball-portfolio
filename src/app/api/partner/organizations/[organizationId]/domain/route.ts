@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { partnerAccess } from "@/lib/partners";
-import { isValidPartnerDomain, normalizePartnerDomain, partnerBuilderHostname } from "@/lib/domain-name";
+import { isValidPartnerDomain, normalizePartnerDomain, partnerAdminHostname, partnerBuilderHostname } from "@/lib/domain-name";
 import { attachProjectDomain, getProjectDomain } from "@/lib/vercel-domains";
 
 function verificationRecords(domain: string, details: Awaited<ReturnType<typeof getProjectDomain>>) {
@@ -32,6 +32,7 @@ export async function POST(request: Request, context: { params: Promise<{ organi
     return NextResponse.json({ error: "Enter a valid apex domain such as academybaseball.com." }, { status: 400 });
   }
   const builderDomain = partnerBuilderHostname(domain);
+  const adminDomain = partnerAdminHostname(domain);
   const wildcardDomain = `*.${domain}`;
   const admin = createAdminClient();
   const claimed = await admin.from("partner_organizations").select("id").eq("profile_domain", domain).neq("id", organizationId).maybeSingle();
@@ -39,17 +40,19 @@ export async function POST(request: Request, context: { params: Promise<{ organi
   if (claimed.data) return NextResponse.json({ error: "That domain is already connected to another organization." }, { status: 409 });
 
   try {
-    const [apex, builder, wildcard] = await Promise.all([
+    const [apex, builder, partnerAdmin, wildcard] = await Promise.all([
       attachProjectDomain(domain),
       attachProjectDomain(builderDomain),
+      attachProjectDomain(adminDomain),
       attachProjectDomain(wildcardDomain),
     ]);
     const records = [
       ...verificationRecords(domain, apex),
       ...verificationRecords(builderDomain, builder),
+      ...verificationRecords(adminDomain, partnerAdmin),
       ...verificationRecords(wildcardDomain, wildcard),
     ];
-    const verified = Boolean(apex?.verified && builder?.verified && wildcard?.verified);
+    const verified = Boolean(apex?.verified && builder?.verified && partnerAdmin?.verified && wildcard?.verified);
     const update = await admin.from("partner_organizations").update({
       profile_domain: domain,
       profile_domain_status: verified ? "active" : "pending",
@@ -62,12 +65,13 @@ export async function POST(request: Request, context: { params: Promise<{ organi
       organization: update.data,
       domain,
       builderDomain,
+      adminDomain,
       wildcardDomain,
       verified,
       verification: records,
       dns: {
-        apex: "Point the apex domain at Vercel using the records shown by your registrar.",
-        builder: `The builder is https://${builderDomain}. The wildcard ${wildcardDomain} covers player subdomains; Vercel requires its nameserver method for wildcard certificates, so follow the verification records returned above.`,
+        apex: `The management dashboard is https://${adminDomain} and the builder is https://${builderDomain}.`,
+        wildcard: `The wildcard ${wildcardDomain} covers player subdomains; Vercel requires its nameserver method for wildcard certificates, so follow the verification records returned above.`,
       },
     });
   } catch (error) {

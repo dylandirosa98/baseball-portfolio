@@ -17,6 +17,8 @@ type Organization = {
   pro_wholesale_cents: number;
   elite_wholesale_cents: number;
   white_label_monthly_cents: number;
+  wholesale_billing_exempt: boolean;
+  wholesale_billing_exempt_reason: string | null;
   profile_domain: string | null;
   profile_domain_status: string;
   profile_domain_error: string | null;
@@ -64,8 +66,8 @@ export default function AdminPartnerManager() {
   async function createPartner(form: FormData) {
     setBusy(true); setMessage("");
     try {
-      const data = await jsonRequest("/api/admin/partners", { method: "POST", body: JSON.stringify({ name: form.get("name"), slug: form.get("slug"), ownerEmail: form.get("ownerEmail"), partnershipType: form.get("partnershipType") }) });
-      setMessage(data.invited ? "Partner created and owner invitation sent." : "Partner created and connected to the existing owner account.");
+      const data = await jsonRequest("/api/admin/partners", { method: "POST", body: JSON.stringify({ name: form.get("name"), slug: form.get("slug"), ownerEmail: form.get("ownerEmail"), partnershipType: form.get("partnershipType"), testCode: form.get("testCode") }) });
+      setMessage(data.complimentaryTest ? "Complimentary white-label test account created. No base or athlete wholesale charges will be generated." : data.invited ? "Partner created and owner invitation sent." : "Partner created and connected to the existing owner account.");
       await load();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Partner creation failed.");
@@ -100,11 +102,12 @@ export default function AdminPartnerManager() {
         <div><p className="text-xs font-bold uppercase tracking-[.18em] text-[#ff8a69]">Reseller operations</p><h3 className="mt-2 text-xl font-black">Partners and white labels</h3></div>
         <div className="flex gap-4 text-xs text-white/40"><span><strong className="block text-lg text-white">{totals.active}</strong>Active</span><span><strong className="block text-lg text-white">{totals.athletes}</strong>Athletes</span><span><strong className="block text-lg text-white">{totals.whiteLabel}</strong>White label</span></div>
       </div>
-      <form action={createPartner} className="grid gap-3 border-b border-white/10 bg-white/[.02] p-5 md:grid-cols-[1fr_180px_1fr_160px_auto]">
+      <form action={createPartner} className="grid gap-3 border-b border-white/10 bg-white/[.02] p-5 md:grid-cols-2 xl:grid-cols-[1fr_160px_1fr_150px_190px_auto]">
         <input name="name" required placeholder="Organization name" className="rounded-lg border border-white/10 bg-black/20 px-3 py-3 text-sm outline-none" />
         <input name="slug" required placeholder="workspace-slug" pattern="[a-z0-9-]+" className="rounded-lg border border-white/10 bg-black/20 px-3 py-3 text-sm outline-none" />
         <input name="ownerEmail" required type="email" placeholder="Owner email" className="rounded-lg border border-white/10 bg-black/20 px-3 py-3 text-sm outline-none" />
         <select name="partnershipType" className="rounded-lg border border-white/10 bg-[#0a151e] px-3 py-3 text-sm"><option value="partner">Partner</option><option value="white_label">White label</option></select>
+        <input name="testCode" placeholder="Internal test code (optional)" className="rounded-lg border border-white/10 bg-black/20 px-3 py-3 text-sm outline-none" />
         <button disabled={busy} className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#e5162a] px-5 text-sm font-black disabled:opacity-50">{busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}Create</button>
       </form>
       {message && <p className="border-b border-white/10 px-5 py-3 text-xs text-white/65">{message}</p>}
@@ -117,7 +120,7 @@ export default function AdminPartnerManager() {
           {organizations.map((organization) => {
             const activeAthletes = (organization.players || []).filter((player) => ["trialing", "active", "past_due", "canceling"].includes(player.partner_billing_status)).length;
             return <article key={organization.id} className="grid gap-5 p-5 xl:grid-cols-[1fr_auto] xl:items-center">
-              <div className="flex min-w-0 gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/5"><Building2 className="h-4 w-4 text-white/45" /></span><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><strong className="truncate">{organization.name}</strong><span className="rounded-full border border-white/10 px-2 py-1 text-[10px] font-bold uppercase text-white/45">{organization.partnership_type.replace("_", " ")}</span><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${organization.status === "active" ? "bg-emerald-300/10 text-emerald-200" : "bg-white/5 text-white/40"}`}>{organization.status}</span></div><p className="mt-1 text-xs text-white/35">{organization.billing_email} · {activeAthletes} active athlete seats · Stripe {organization.stripe_account_status}</p>{organization.profile_domain && <p className="mt-1 text-xs text-white/35">White-label domain: {organization.profile_domain} · {organization.profile_domain_status}</p>}{organization.billing_sync_error && <p className="mt-2 text-xs text-red-200">Billing: {organization.billing_sync_error}</p>}{organization.profile_domain_error && <p className="mt-2 text-xs text-red-200">Domain: {organization.profile_domain_error}</p>}</div></div>
+              <div className="flex min-w-0 gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/5"><Building2 className="h-4 w-4 text-white/45" /></span><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><strong className="truncate">{organization.name}</strong><span className="rounded-full border border-white/10 px-2 py-1 text-[10px] font-bold uppercase text-white/45">{organization.partnership_type.replace("_", " ")}</span>{organization.wholesale_billing_exempt && <span className="rounded-full bg-violet-300/10 px-2 py-1 text-[10px] font-bold uppercase text-violet-200">complimentary test</span>}<span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${organization.status === "active" ? "bg-emerald-300/10 text-emerald-200" : "bg-white/5 text-white/40"}`}>{organization.status}</span></div><p className="mt-1 text-xs text-white/35">{organization.billing_email} · {activeAthletes} active athlete seats · Stripe {organization.stripe_account_status}</p>{organization.profile_domain && <p className="mt-1 text-xs text-white/35">White-label domain: {organization.profile_domain} · {organization.profile_domain_status}</p>}{organization.billing_sync_error && <p className="mt-2 text-xs text-red-200">Billing: {organization.billing_sync_error}</p>}{organization.profile_domain_error && <p className="mt-2 text-xs text-red-200">Domain: {organization.profile_domain_error}</p>}</div></div>
               <div className="flex flex-wrap gap-2">
                 <a href={`/partner/${organization.id}`} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-white/60 hover:text-white">Open workspace</a>
                 <select disabled={busy} value={organization.partnership_type} onChange={(event) => void updatePartner(organization.id, { partnershipType: event.target.value })} className="rounded-lg border border-white/10 bg-[#0a151e] px-3 py-2 text-xs font-bold"><option value="partner">Partner $8/$12</option><option value="white_label">White label $4/$6 + $200</option></select>

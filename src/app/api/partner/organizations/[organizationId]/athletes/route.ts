@@ -42,7 +42,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ or
   const billingSource = body.billingSource === "partner_paid" ? "partner_paid" : "customer_subscription";
   const paymentLinkId = String(body.paymentLinkId || "");
   if (!firstName || !lastName || !email) return NextResponse.json({ error: "First name, last name, and a valid email are required." }, { status: 400 });
-  if (!access.organization.billing_payment_method_ready) {
+  if (!access.organization.billing_payment_method_ready && !access.organization.wholesale_billing_exempt) {
     return NextResponse.json({ error: "Add the organization billing card before creating paid athlete profiles." }, { status: 409 });
   }
 

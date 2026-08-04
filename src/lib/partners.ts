@@ -31,6 +31,8 @@ export type PartnerOrganizationRow = {
   elite_wholesale_cents: number;
   domain_wholesale_cents: number;
   white_label_monthly_cents: number;
+  wholesale_billing_exempt: boolean;
+  wholesale_billing_exempt_reason: string | null;
   logo_url: string | null;
   primary_color: string;
   support_email: string | null;

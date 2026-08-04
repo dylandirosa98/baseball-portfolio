@@ -66,9 +66,9 @@ export async function syncPartnerWholesaleBilling(organizationId: string) {
   const counts = await partnerLicenseCounts(organizationId);
   const prices = await priceIds(organization);
   const desired: Array<{ kind: WholesaleKind; price: string; quantity: number }> = organization.status === "active" ? [
-    ...(organization.partnership_type === "white_label" ? [{ kind: "base" as const, price: prices.base, quantity: 1 }] : []),
-    { kind: "pro" as const, price: prices.pro, quantity: counts.pro },
-    { kind: "elite" as const, price: prices.elite, quantity: counts.elite },
+    ...(!organization.wholesale_billing_exempt && organization.partnership_type === "white_label" ? [{ kind: "base" as const, price: prices.base, quantity: 1 }] : []),
+    ...(!organization.wholesale_billing_exempt ? [{ kind: "pro" as const, price: prices.pro, quantity: counts.pro }] : []),
+    ...(!organization.wholesale_billing_exempt ? [{ kind: "elite" as const, price: prices.elite, quantity: counts.elite }] : []),
     { kind: "domain" as const, price: prices.domain, quantity: counts.domain },
   ].filter((item) => item.quantity > 0) : [];
 

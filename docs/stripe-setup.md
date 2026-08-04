@@ -83,8 +83,8 @@ links, unpublishes its profiles, and cancels connected subscriptions.
 White-label organizations use the same workflow at lower wholesale prices and
 can replace the Diamond Profile logo, name, support email, accent color, and
 footer branding on their managed profiles. They can connect an apex domain from
-their workspace; the branded builder is served from `build.<domain>` and each
-athlete profile from `<slug>.<domain>`. Vercel wildcard domains require the
+their workspace; management is served from `admin.<domain>`, the branded builder
+from `builder.<domain>`, and each athlete profile from `<slug>.<domain>`. Vercel wildcard domains require the
 nameserver verification records returned by the domain connection flow.
 
 White-label economics are explicit: Diamond Profile charges the organization

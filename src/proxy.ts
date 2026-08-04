@@ -27,7 +27,12 @@ function apexUrl(request: NextRequest, hostname: string) {
 
 function partnerBuilderUrl(domain: string, request: NextRequest) {
   const protocol = request.nextUrl.protocol || "https:";
-  return new URL(request.nextUrl.pathname + request.nextUrl.search, `${protocol}//build.${domain}`);
+  return new URL(request.nextUrl.pathname + request.nextUrl.search, `${protocol}//builder.${domain}`);
+}
+
+function partnerAdminUrl(domain: string, request: NextRequest, pathname = "/") {
+  const protocol = request.nextUrl.protocol || "https:";
+  return new URL(pathname, `${protocol}//admin.${domain}`);
 }
 
 export async function proxy(request: NextRequest) {
@@ -63,8 +68,8 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // White-label domains are tenant-aware. The apex and build host show the
-  // branded builder, while every single-label child host maps to the player
+  // White-label domains are tenant-aware. The builder and admin hosts show
+  // their branded tools, while every other single-label child host maps to the player
   // whose slug matches that label. The wildcard Vercel domain makes new
   // athletes work without adding a new Vercel domain for each profile.
   let partnerOrganization: { id: string; profile_domain: string; status: string } | null = null;
@@ -95,15 +100,29 @@ export async function proxy(request: NextRequest) {
 
   if (partnerOrganization) {
     const domain = partnerOrganization.profile_domain;
-    const isBuilderHost = partnerPrefix === "build";
-    const isPlayerHost = Boolean(partnerPrefix) && !partnerPrefix.includes(".") && partnerPrefix !== "www";
-    if (isBuilderHost || !partnerPrefix) {
+    const isBuilderHost = partnerPrefix === "builder";
+    const isAdminHost = partnerPrefix === "admin";
+    const isPlayerHost = Boolean(partnerPrefix) && !partnerPrefix.includes(".") && !["www", "builder", "admin"].includes(partnerPrefix);
+    if (!partnerPrefix || partnerPrefix === "www") {
+      return NextResponse.redirect(partnerAdminUrl(domain, request));
+    }
+    if (isBuilderHost) {
       if (pathname === "/") {
         const url = request.nextUrl.clone();
         url.pathname = "/builder";
         return NextResponse.rewrite(url);
       }
-      // Continue through the normal auth gate for builder/dashboard paths.
+      if (pathname.startsWith("/dashboard") || pathname.startsWith("/partner") || pathname.startsWith("/admin") || pathname.startsWith("/account")) {
+        return NextResponse.redirect(partnerAdminUrl(domain, request));
+      }
+      // Continue through the normal auth gate for builder and auth paths.
+    } else if (isAdminHost) {
+      if (pathname === "/" || pathname === "/dashboard") {
+        const url = request.nextUrl.clone();
+        url.pathname = `/partner/${partnerOrganization.id}`;
+        return NextResponse.rewrite(url);
+      }
+      if (pathname.startsWith("/builder")) return NextResponse.redirect(partnerBuilderUrl(domain, request));
     } else if (isPlayerHost) {
       if (pathname === "/") {
         const url = request.nextUrl.clone();
@@ -111,8 +130,9 @@ export async function proxy(request: NextRequest) {
         return NextResponse.rewrite(url);
       }
       if (pathname === `/${partnerPrefix}`) return NextResponse.next({ request });
-      if (pathname === "/auth" || pathname.startsWith("/account") || pathname.startsWith("/admin") || pathname.startsWith("/builder") || pathname.startsWith("/dashboard") || pathname.startsWith("/partner")) {
-        return NextResponse.redirect(partnerBuilderUrl(domain, request));
+      if (pathname.startsWith("/builder")) return NextResponse.redirect(partnerBuilderUrl(domain, request));
+      if (pathname === "/auth" || pathname.startsWith("/account") || pathname.startsWith("/admin") || pathname.startsWith("/dashboard") || pathname.startsWith("/partner")) {
+        return NextResponse.redirect(partnerAdminUrl(domain, request));
       }
       const url = request.nextUrl.clone();
       url.pathname = "/";
@@ -166,6 +186,9 @@ export async function proxy(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      ...(partnerOrganization?.profile_domain && ["admin", "builder"].includes(partnerPrefix)
+        ? { cookieOptions: { domain: `.${partnerOrganization.profile_domain}`, path: "/", sameSite: "lax" as const } }
+        : {}),
       cookies: {
         getAll: () => request.cookies.getAll(),
         setAll(cookies) {

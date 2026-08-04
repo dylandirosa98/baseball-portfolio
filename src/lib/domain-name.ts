@@ -27,7 +27,11 @@ export function isValidPartnerDomain(value: string) {
 }
 
 export function partnerBuilderHostname(domain: string) {
-  return `build.${normalizePartnerDomain(domain)}`;
+  return `builder.${normalizePartnerDomain(domain)}`;
+}
+
+export function partnerAdminHostname(domain: string) {
+  return `admin.${normalizePartnerDomain(domain)}`;
 }
 
 export function partnerPlayerHostname(slug: string, domain: string) {
