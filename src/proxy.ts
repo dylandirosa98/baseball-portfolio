@@ -25,6 +25,11 @@ function apexUrl(request: NextRequest, hostname: string) {
   return new URL(request.nextUrl.pathname + request.nextUrl.search, `https://${PROFILE_DOMAIN}`);
 }
 
+function partnerBuilderUrl(domain: string, request: NextRequest) {
+  const protocol = request.nextUrl.protocol || "https:";
+  return new URL(request.nextUrl.pathname + request.nextUrl.search, `${protocol}//build.${domain}`);
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hostname = normalizedHostname(
@@ -58,6 +63,64 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // White-label domains are tenant-aware. The apex and build host show the
+  // branded builder, while every single-label child host maps to the player
+  // whose slug matches that label. The wildcard Vercel domain makes new
+  // athletes work without adding a new Vercel domain for each profile.
+  let partnerOrganization: { id: string; profile_domain: string; status: string } | null = null;
+  let partnerPrefix = "";
+  const platformHost = hostname === PROFILE_DOMAIN || hostname === `www.${PROFILE_DOMAIN}` || hostname === "localhost" || hostname.endsWith(".localhost") || hostname.endsWith(".vercel.app");
+  if (!platformHost && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    const admin = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+      { cookies: { getAll: () => [], setAll: () => {} } },
+    );
+    const { data: organizations } = await admin
+      .from("partner_organizations")
+      .select("id,profile_domain,status")
+      .eq("partnership_type", "white_label")
+      .eq("profile_domain_status", "active")
+      .eq("status", "active")
+      .not("profile_domain", "is", null);
+    const match = (organizations ?? []).find((organization) => {
+      const domain = String(organization.profile_domain || "").toLowerCase();
+      return hostname === domain || hostname.endsWith(`.${domain}`);
+    });
+    if (match?.profile_domain) {
+      partnerOrganization = match as { id: string; profile_domain: string; status: string };
+      partnerPrefix = hostname === match.profile_domain ? "" : hostname.slice(0, -(match.profile_domain.length + 1));
+    }
+  }
+
+  if (partnerOrganization) {
+    const domain = partnerOrganization.profile_domain;
+    const isBuilderHost = partnerPrefix === "build";
+    const isPlayerHost = Boolean(partnerPrefix) && !partnerPrefix.includes(".") && partnerPrefix !== "www";
+    if (isBuilderHost || !partnerPrefix) {
+      if (pathname === "/") {
+        const url = request.nextUrl.clone();
+        url.pathname = "/builder";
+        return NextResponse.rewrite(url);
+      }
+      // Continue through the normal auth gate for builder/dashboard paths.
+    } else if (isPlayerHost) {
+      if (pathname === "/") {
+        const url = request.nextUrl.clone();
+        url.pathname = `/${partnerPrefix}`;
+        return NextResponse.rewrite(url);
+      }
+      if (pathname === `/${partnerPrefix}`) return NextResponse.next({ request });
+      if (pathname === "/auth" || pathname.startsWith("/account") || pathname.startsWith("/admin") || pathname.startsWith("/builder") || pathname.startsWith("/dashboard") || pathname.startsWith("/partner")) {
+        return NextResponse.redirect(partnerBuilderUrl(domain, request));
+      }
+      const url = request.nextUrl.clone();
+      url.pathname = "/";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+  }
+
   const ownDomains = (process.env.NEXT_PUBLIC_APP_DOMAIN ?? "")
     .split(",")
     .map((domain) => normalizedHostname(domain.trim().replace(/^https?:\/\//, "").split("/")[0]))
@@ -67,7 +130,7 @@ export async function proxy(request: NextRequest) {
     hostname.endsWith(".vercel.app") ||
     hostname === PROFILE_DOMAIN ||
     hostname === `www.${PROFILE_DOMAIN}` ||
-    ownDomains.some((domain) => hostname === domain);
+    ownDomains.some((domain) => hostname === domain) || Boolean(partnerOrganization);
 
   if (!isOwnDomain && pathname === "/" && process.env.SUPABASE_SERVICE_ROLE_KEY) {
     const admin = createServerClient(

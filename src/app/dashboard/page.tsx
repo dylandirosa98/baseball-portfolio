@@ -44,6 +44,12 @@ type DashboardPlayerRow = PlayerRow & {
   stripe_customer_id: string | null;
   custom_domain_status: "none" | "purchasing" | "active" | "failed" | "canceled" | null;
   custom_domain_error: string | null;
+  organization_id: string | null;
+  partner_billing_source: "customer_subscription" | "partner_paid" | null;
+  partner_billing_status: string;
+  partner_stripe_customer_id: string | null;
+  partner_stripe_subscription_id: string | null;
+  partner_access_expires_at: string | null;
 };
 
 function planName(tier: BillingTier) {
@@ -69,7 +75,7 @@ function adminAllowed(email?: string) {
 }
 
 type DashboardPageProps = {
-  searchParams: Promise<{ updated?: string; published?: string; checkout?: string; session_id?: string }>;
+  searchParams: Promise<{ updated?: string; published?: string; checkout?: string; session_id?: string; partner_billing?: string }>;
 };
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
@@ -165,6 +171,36 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     redirect(session.url);
   }
 
+  async function cancelPartnerBilling() {
+    "use server";
+    const client = await createClient();
+    const { data: { user: billingUser } } = await client.auth.getUser();
+    if (!billingUser) redirect("/auth");
+    const { data: billingPlayer } = await createAdminClient()
+      .from("players")
+      .select("partner_stripe_subscription_id, partner_billing_source, partner_billing_status, organization_id, partner_organizations(stripe_account_id)")
+      .eq("user_id", billingUser.id)
+      .maybeSingle();
+    const organization = billingPlayer?.partner_organizations as unknown as { stripe_account_id: string | null } | null;
+    if (
+      billingPlayer?.partner_billing_source !== "customer_subscription"
+      || !billingPlayer.partner_stripe_subscription_id
+      || !organization?.stripe_account_id
+      || !["trialing", "active", "past_due", "canceling"].includes(billingPlayer.partner_billing_status)
+    ) redirect("/dashboard");
+    try {
+      await getStripe().subscriptions.update(
+        billingPlayer.partner_stripe_subscription_id,
+        { cancel_at_period_end: true },
+        { stripeAccount: organization.stripe_account_id },
+      );
+    } catch (error) {
+      console.error("Connected Stripe cancellation request failed", error);
+      redirect("/dashboard?partner_billing=error");
+    }
+    redirect("/dashboard?partner_billing=scheduled");
+  }
+
   async function signOut() {
     "use server";
     const client = await createClient();
@@ -191,6 +227,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     ? "Your Diamond Profile is live. You can keep editing it anytime."
     : query.checkout === "success"
       ? "Checkout complete. Your plan updates are being confirmed and your site remains live."
+      : query.partner_billing === "scheduled"
+        ? "Your partner plan will cancel at the end of the current billing period."
+        : query.partner_billing === "error"
+          ? "We could not update the partner subscription. Contact your partner or billing support."
       : query.updated === "1"
         ? "Your latest changes were saved to your live profile."
         : null;
@@ -471,6 +511,13 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                       <button className="min-h-11 rounded-lg border border-white/15 px-4 text-sm font-bold hover:bg-white/5">Manage billing</button>
                     </form>
                   )}
+                  {playerRow?.partner_billing_source === "customer_subscription"
+                    && playerRow.partner_stripe_subscription_id
+                    && ["trialing", "active", "past_due", "canceling"].includes(playerRow.partner_billing_status) && (
+                      <form action={cancelPartnerBilling}>
+                        <button className="min-h-11 rounded-lg border border-red-300/25 px-4 text-sm font-bold text-red-100 hover:bg-red-400/10">Cancel partner plan</button>
+                      </form>
+                    )}
                   <form action={signOut}>
                     <button className="min-h-11 rounded-lg border border-white/10 px-4 text-sm font-semibold text-white/45 hover:text-white">Sign out</button>
                   </form>

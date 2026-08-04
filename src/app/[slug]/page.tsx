@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { rowToPlayer, PlayerRow } from "@/lib/supabase/transforms";
 import { PROFILE_DOMAIN, profileUrl } from "@/lib/slug";
+import { partnerPlayerHostname } from "@/lib/domain-name";
 import PlayerTemplate from "@/components/PlayerTemplate";
 import PortfolioAnalytics from "@/components/PortfolioAnalytics";
 import type { Metadata } from "next";
@@ -66,16 +67,27 @@ export default async function PlayerPage({ params }: PageProps) {
 
   const { data, error } = await admin
     .from("players")
-    .select("*, partner_organizations(name, logo_url, primary_color, support_email, hide_diamond_branding, status)")
+    .select("*, partner_organizations(name, logo_url, primary_color, support_email, hide_diamond_branding, status, profile_domain, profile_domain_status)")
     .eq("slug", slug)
     .eq("is_published", true)
     .single();
 
   if (error || !data) notFound();
-  const organization = data.partner_organizations as unknown as { name: string; logo_url: string | null; primary_color: string; support_email: string | null; hide_diamond_branding: boolean; status: string } | null;
+  const organization = data.partner_organizations as unknown as { name: string; logo_url: string | null; primary_color: string; support_email: string | null; hide_diamond_branding: boolean; status: string; profile_domain: string | null; profile_domain_status: string } | null;
   if (organization && organization.status !== "active") notFound();
+  // Partner profiles are entitled either through the partner's wholesale seat
+  // or through a connected-account customer subscription. Keep this check at
+  // render time as a defense-in-depth fallback if a webhook is delayed.
+  if (organization && !["trialing", "active", "past_due", "canceling"].includes(String((data as Record<string, unknown>).partner_billing_status))) {
+    notFound();
+  }
 
   const hostname = await requestHostname();
+  if (organization?.profile_domain && organization.profile_domain_status === "active") {
+    const expectedSuffix = `.${organization.profile_domain}`;
+    const isPartnerHost = hostname === organization.profile_domain || hostname.endsWith(expectedSuffix);
+    if (!isPartnerHost) redirect(`https://${partnerPlayerHostname(slug, organization.profile_domain)}`);
+  }
   if (hostname === PROFILE_DOMAIN || hostname === `www.${PROFILE_DOMAIN}`) redirect(profileUrl(slug));
 
   const player = rowToPlayer(data as PlayerRow, { enforceEntitlements: true });

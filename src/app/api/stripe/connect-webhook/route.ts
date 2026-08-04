@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { assertStripeEventMode, getStripe } from "@/lib/stripe";
 import { partnerSubscriptionEntitled } from "@/lib/partners";
 import { syncPartnerWholesaleBilling } from "@/lib/partner-billing";
+import { disableManagedDomainRenewal } from "@/lib/vercel-domains";
 
 export const runtime = "nodejs";
 
@@ -31,6 +32,8 @@ async function applySubscription(event: Stripe.Event, subscription: Stripe.Subsc
     last_event_created: event.created,
   }).eq("id", mapped.data.id);
   if (updated.error) throw updated.error;
+  const existingPlayer = await admin.from("players").select("custom_domain,has_custom_domain").eq("id", mapped.data.player_id).maybeSingle();
+  if (existingPlayer.error) throw existingPlayer.error;
   const player = await admin.from("players").update({
     partner_billing_status: entitled ? status : "canceled",
     billing_tier: entitled ? mapped.data.tier : "free",
@@ -38,9 +41,12 @@ async function applySubscription(event: Stripe.Event, subscription: Stripe.Subsc
     partner_stripe_customer_id: customerId,
     partner_stripe_subscription_id: subscription.id,
     partner_access_expires_at: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
-    ...(entitled ? {} : { is_published: false }),
+    ...(entitled ? {} : { is_published: false, has_custom_domain: false, custom_domain_status: "canceled" }),
   }).eq("id", mapped.data.player_id);
   if (player.error) throw player.error;
+  if (!entitled && existingPlayer.data?.has_custom_domain && existingPlayer.data.custom_domain) {
+    await disableManagedDomainRenewal(existingPlayer.data.custom_domain);
+  }
   await syncPartnerWholesaleBilling(mapped.data.organization_id);
 }
 

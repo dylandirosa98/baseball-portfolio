@@ -25,6 +25,12 @@ type DomainOrderResult = {
   error?: { code?: string };
 };
 
+export type ProjectDomainDetails = {
+  name?: string;
+  verified?: boolean;
+  verification?: Array<{ type?: string; domain?: string; value?: string; reason?: string }>;
+};
+
 class VercelApiError extends Error {
   constructor(message: string, readonly code?: string) {
     super(message);
@@ -120,12 +126,16 @@ export async function getDomainAvailability(domain: string) {
 }
 
 async function isAttached(domain: string) {
+  return Boolean(await getProjectDomain(domain));
+}
+
+export async function getProjectDomain(domain: string) {
   const { project } = configuration();
-  return Boolean(await vercelRequest(
+  return await vercelRequest<ProjectDomainDetails>(
     `/v9/projects/${encodeURIComponent(project)}/domains/${encodeURIComponent(domain)}`,
     {},
     true,
-  ));
+  );
 }
 
 async function isOwned(domain: string) {
@@ -134,10 +144,25 @@ async function isOwned(domain: string) {
 
 async function attachDomain(domain: string) {
   const { project } = configuration();
-  await vercelRequest(`/v10/projects/${encodeURIComponent(project)}/domains`, {
+  return await vercelRequest<ProjectDomainDetails>(`/v10/projects/${encodeURIComponent(project)}/domains`, {
     method: "POST",
     body: JSON.stringify({ name: domain }),
   });
+}
+
+/** Add a domain to the shared Vercel project, returning DNS verification data. */
+export async function attachProjectDomain(domain: string) {
+  const existing = await getProjectDomain(domain);
+  if (existing) return existing;
+  try {
+    return await attachDomain(domain);
+  } catch (error) {
+    // Concurrent setup or a retry commonly races with an already-added
+    // domain. Read it back before surfacing the original failure.
+    const after = await getProjectDomain(domain);
+    if (after) return after;
+    throw error;
+  }
 }
 
 async function setManagedDomainRenewal(domain: string, autoRenew: boolean) {

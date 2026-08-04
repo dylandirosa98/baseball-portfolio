@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
   const playerId = request.nextUrl.searchParams.get("playerId");
   const access = await authorizedPlayer(user.id, playerId, true);
   if (!access) return NextResponse.json({ error: "Save your player name before publishing." }, { status: 409 });
-  if (access.managed && !["active", "past_due", "canceling"].includes(access.player.partner_billing_status)) {
+  if (access.managed && !["trialing", "active", "past_due", "canceling"].includes(access.player.partner_billing_status)) {
     return NextResponse.json({ error: "This athlete needs an active partner plan before publishing." }, { status: 402 });
   }
   const { data, error } = await createAdminClient()

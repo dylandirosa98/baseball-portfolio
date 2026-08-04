@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isPlatformAdmin } from "@/lib/admin-auth";
 import { getAppUrl, getStripe } from "@/lib/stripe";
-import { inviteOrFindUser } from "@/lib/partners";
+import { cancelPartnerOrganization, inviteOrFindUser } from "@/lib/partners";
 import { syncPartnerWholesaleBilling } from "@/lib/partner-billing";
 
 function organizationSlug(value: unknown) {
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
     support_email: ownerEmail,
     pro_wholesale_cents: partnershipType === "white_label" ? 400 : 800,
     elite_wholesale_cents: partnershipType === "white_label" ? 600 : 1200,
-    domain_wholesale_cents: 1800,
+    domain_wholesale_cents: 1000,
     white_label_monthly_cents: 20000,
     hide_diamond_branding: partnershipType === "white_label",
     created_by: user.id,
@@ -109,20 +109,34 @@ export async function PATCH(request: Request) {
   const id = String(body.id || "");
   if (!id) return NextResponse.json({ error: "Organization ID is required." }, { status: 400 });
   const values: Record<string, unknown> = {};
-  if (["draft", "active", "suspended", "canceled"].includes(String(body.status))) values.status = body.status;
+  const requestedStatus = String(body.status || "");
+  if (["draft", "active", "suspended", "canceled"].includes(requestedStatus)) values.status = requestedStatus;
   if (["partner", "white_label"].includes(String(body.partnershipType))) {
     const whiteLabel = body.partnershipType === "white_label";
     values.partnership_type = body.partnershipType;
     values.hide_diamond_branding = whiteLabel;
     values.pro_wholesale_cents = whiteLabel ? 400 : 800;
     values.elite_wholesale_cents = whiteLabel ? 600 : 1200;
+    values.domain_wholesale_cents = 1000;
   }
   if (typeof body.name === "string" && body.name.trim()) values.name = body.name.trim().slice(0, 120);
-  const { data, error } = await createAdminClient().from("partner_organizations").update(values).eq("id", id).select("*").maybeSingle();
+  const adminClient = createAdminClient();
+  const { data: before, error: beforeError } = await adminClient
+    .from("partner_organizations")
+    .select("status")
+    .eq("id", id)
+    .maybeSingle();
+  if (beforeError) return NextResponse.json({ error: beforeError.message }, { status: 500 });
+  if (!before) return NextResponse.json({ error: "Partner was not found." }, { status: 404 });
+
+  const { data, error } = await adminClient.from("partner_organizations").update(values).eq("id", id).select("*").maybeSingle();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!data) return NextResponse.json({ error: "Partner was not found." }, { status: 404 });
   let billingWarning: string | null = null;
   try {
+    if (requestedStatus === "canceled") {
+      await cancelPartnerOrganization(id);
+    }
     await syncPartnerWholesaleBilling(id);
   } catch (syncError) {
     billingWarning = syncError instanceof Error ? syncError.message : "Wholesale billing synchronization failed.";

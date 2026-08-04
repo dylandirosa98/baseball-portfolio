@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { getAppUrl, getStripe } from "@/lib/stripe";
 
 export async function GET(request: NextRequest) {
@@ -7,11 +8,13 @@ export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code") || "";
   const admin = createAdminClient();
   const { data: oauthState } = await admin.from("partner_stripe_oauth_states")
-    .select("organization_id, expires_at, used_at")
+    .select("organization_id, user_id, expires_at, used_at")
     .eq("state", state)
     .maybeSingle();
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
   const destination = oauthState?.organization_id ? `/partner/${oauthState.organization_id}` : "/partner";
-  if (!state || !code || !oauthState || oauthState.used_at || new Date(oauthState.expires_at) <= new Date()) {
+  if (!state || !code || !oauthState || !user || oauthState.user_id !== user.id || oauthState.used_at || new Date(oauthState.expires_at) <= new Date()) {
     return NextResponse.redirect(`${getAppUrl()}${destination}?stripe=invalid`);
   }
 

@@ -2,6 +2,8 @@ import "server-only";
 import type { User } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isPlatformAdmin } from "@/lib/admin-auth";
+import { getStripe } from "@/lib/stripe";
+import { disableManagedDomainRenewal } from "@/lib/vercel-domains";
 
 export type PartnerRole = "owner" | "admin" | "editor" | "viewer";
 export type PartnershipType = "partner" | "white_label";
@@ -34,6 +36,9 @@ export type PartnerOrganizationRow = {
   support_email: string | null;
   profile_domain: string | null;
   profile_domain_status: "none" | "pending" | "active" | "failed";
+  profile_domain_error: string | null;
+  profile_domain_verification: Array<{ domain?: string; verified?: boolean; type?: string; name?: string; value?: string }>;
+  profile_domain_verified_at: string | null;
   hide_diamond_branding: boolean;
   created_at: string;
   updated_at: string;
@@ -168,4 +173,98 @@ export async function claimPartnerInvitations(user: User) {
 
 export function partnerSubscriptionEntitled(status: string) {
   return status === "active" || status === "trialing" || status === "past_due";
+}
+
+/**
+ * Fully disables a partner tenant. This is intentionally idempotent because it
+ * is called both by the admin status control and by operational recovery jobs.
+ * Connected-account subscriptions must be canceled in Stripe; simply hiding
+ * the tenant would leave the partner's customers paying indefinitely.
+ */
+export async function cancelPartnerOrganization(organizationId: string) {
+  const admin = createAdminClient();
+  const { data: organization, error: organizationError } = await admin
+    .from("partner_organizations")
+    .select("id, stripe_account_id")
+    .eq("id", organizationId)
+    .maybeSingle();
+  if (organizationError) throw organizationError;
+  if (!organization) throw new Error("Partner organization was not found.");
+
+  const { data: subscriptions, error: subscriptionError } = await admin
+    .from("partner_customer_subscriptions")
+    .select("id, stripe_subscription_id, stripe_account_id")
+    .eq("organization_id", organizationId)
+    .in("status", ["active", "trialing", "past_due", "canceling"]);
+  if (subscriptionError) throw subscriptionError;
+
+  const cancellationErrors: string[] = [];
+  for (const subscription of subscriptions ?? []) {
+    let canceled = true;
+    try {
+      await getStripe().subscriptions.cancel(
+        subscription.stripe_subscription_id,
+        {},
+        { stripeAccount: subscription.stripe_account_id },
+      );
+    } catch (error) {
+      // A previously canceled/deleted subscription should not prevent the
+      // tenant from being disabled. Preserve other failures for visibility.
+      const message = error instanceof Error ? error.message : "Stripe cancellation failed.";
+      if (!/no such subscription|already been canceled|resource_missing/i.test(message)) {
+        cancellationErrors.push(`${subscription.stripe_subscription_id}: ${message}`);
+        canceled = false;
+      }
+    }
+    if (canceled) {
+      const { error: ledgerError } = await admin
+        .from("partner_customer_subscriptions")
+        .update({ status: "canceled", cancel_at_period_end: false })
+        .eq("id", subscription.id);
+      if (ledgerError) throw ledgerError;
+    }
+  }
+
+  const { error: checkoutError } = await admin
+    .from("partner_profile_checkouts")
+    .update({ active: false })
+    .eq("organization_id", organizationId);
+  if (checkoutError) throw checkoutError;
+
+  const { error: linksError } = await admin
+    .from("partner_payment_links")
+    .update({ active: false })
+    .eq("organization_id", organizationId);
+  if (linksError) throw linksError;
+
+  const { data: playersWithDomains, error: domainPlayersError } = await admin
+    .from("players")
+    .select("custom_domain,has_custom_domain")
+    .eq("organization_id", organizationId)
+    .eq("has_custom_domain", true);
+  if (domainPlayersError) throw domainPlayersError;
+  for (const player of playersWithDomains ?? []) {
+    if (player.custom_domain) {
+      try { await disableManagedDomainRenewal(player.custom_domain); }
+      catch (error) { console.warn("Could not disable partner player domain renewal", { domain: player.custom_domain, error }); }
+    }
+  }
+
+  const { error: playersError } = await admin
+    .from("players")
+    .update({
+      partner_billing_status: "canceled",
+      billing_tier: "free",
+      subscription_status: "canceled",
+      is_published: false,
+      has_custom_domain: false,
+      custom_domain_status: "canceled",
+      partner_access_expires_at: null,
+    })
+    .eq("organization_id", organizationId);
+  if (playersError) throw playersError;
+
+  if (cancellationErrors.length > 0) {
+    throw new Error(`Some connected subscriptions could not be canceled: ${cancellationErrors.join("; ")}`);
+  }
 }

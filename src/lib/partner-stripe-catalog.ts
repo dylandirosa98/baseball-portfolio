@@ -7,7 +7,7 @@ export const PARTNER_CATALOG = {
   whiteLabelBase: { env: "STRIPE_WHITE_LABEL_BASE_PRICE_ID", key: "diamond_white_label_base_v1", name: "Diamond Profile White Label Platform", cents: 20000 },
   whiteLabelPro: { env: "STRIPE_WHITE_LABEL_PRO_PRICE_ID", key: "diamond_white_label_pro_v1", name: "Diamond Profile White Label Pro License", cents: 400 },
   whiteLabelElite: { env: "STRIPE_WHITE_LABEL_ELITE_PRICE_ID", key: "diamond_white_label_elite_v1", name: "Diamond Profile White Label Elite License", cents: 600 },
-  domain: { env: "STRIPE_PARTNER_DOMAIN_PRICE_ID", key: "diamond_partner_domain_v1", name: "Diamond Profile Partner Managed Domain", cents: 1800 },
+  domain: { env: "STRIPE_PARTNER_DOMAIN_PRICE_ID", key: "diamond_partner_domain_v2", name: "Diamond Profile Partner Managed Domain", cents: 1000 },
 } as const;
 
 export type PartnerCatalogName = keyof typeof PARTNER_CATALOG;

@@ -7,6 +7,10 @@ import { getPartnerCatalogPriceIds } from "@/lib/partner-stripe-catalog";
 
 type WholesaleKind = "base" | "pro" | "elite" | "domain";
 
+export function partnerPlatformCostCents(organization: PartnerOrganizationRow, tier: "pro" | "elite") {
+  return tier === "pro" ? organization.pro_wholesale_cents : organization.elite_wholesale_cents;
+}
+
 async function priceIds(organization: PartnerOrganizationRow) {
   const whiteLabel = organization.partnership_type === "white_label";
   const catalog = await getPartnerCatalogPriceIds();
@@ -35,16 +39,16 @@ export async function partnerLicenseCounts(organizationId: string) {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("players")
-    .select("partner_plan, partner_billing_status, has_custom_domain")
+    .select("partner_plan, partner_billing_status, has_custom_domain, custom_domain_status")
     .eq("organization_id", organizationId);
   if (error) throw error;
   const active = (data ?? []).filter((player) =>
-    ["active", "past_due", "canceling"].includes(player.partner_billing_status)
+    ["trialing", "active", "past_due", "canceling"].includes(player.partner_billing_status)
   );
   return {
     pro: active.filter((player) => player.partner_plan === "pro").length,
     elite: active.filter((player) => player.partner_plan === "elite").length,
-    domain: (data ?? []).filter((player) => player.has_custom_domain).length,
+    domain: active.filter((player) => player.has_custom_domain && ["active", "purchasing"].includes(player.custom_domain_status)).length,
   };
 }
 

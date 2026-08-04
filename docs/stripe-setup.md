@@ -55,6 +55,49 @@ Domain purchase, ownership, project attachment, and renewal use Vercel's current
 
 Purchases are tracked by Vercel order ID because registration can finish asynchronously. The Stripe checkout event starts the order, and the secured `/api/domains/reconcile` cron route completes pending ownership and project attachment. `vercel.json` schedules a portable daily safety reconciliation; successful standard registrations can still complete during the initial checkout webhook. Canceling the domain add-on disables registrar auto-renewal, and reactivation enables it again.
 
+## Partner and white-label billing
+
+The private `/admin` dashboard creates either a standard partner or a white-label
+organization. Each organization receives its own workspace, team memberships,
+branding settings, athlete profiles, and billing ledger.
+
+1. Create the organization from **Admin → Partners and white labels**.
+2. The partner owner signs in, adds a billing card for wholesale seat billing,
+   and connects their own Stripe account through Stripe Connect.
+3. In the partner workspace, the owner pastes one recurring Stripe Payment Link
+   for each tier. Diamond Profile verifies that each link belongs to the
+   connected account before it can be assigned to an athlete.
+4. Creating an athlete generates a permanent `/p/{token}` checkout route. The
+   route forwards to the selected partner Payment Link and adds the token as
+   Stripe's `client_reference_id`, which maps the completed subscription back to
+   that athlete.
+
+The Connect webhook at `/api/stripe/connect-webhook` records subscription
+creation, changes, payment failures, and cancellations. A canceled or unpaid
+subscription immediately loses the athlete's paid entitlement and profile
+publishing access. Wholesale billing is reconciled from currently entitled
+athlete seats, so the platform subscription quantity falls when an athlete
+cancels. Canceling a partner from the platform admin also disables new checkout
+links, unpublishes its profiles, and cancels connected subscriptions.
+
+White-label organizations use the same workflow at lower wholesale prices and
+can replace the Diamond Profile logo, name, support email, accent color, and
+footer branding on their managed profiles. They can connect an apex domain from
+their workspace; the branded builder is served from `build.<domain>` and each
+athlete profile from `<slug>.<domain>`. Vercel wildcard domains require the
+nameserver verification records returned by the domain connection flow.
+
+White-label economics are explicit: Diamond Profile charges the organization
+$4/month for each Pro seat, $6/month for each Elite seat, $200/month for the
+platform, and $10/month for each separately purchased player domain. Partners
+choose any retail price at or above the platform base in their connected Stripe
+checkout; for example, a $15 Pro checkout leaves an $11 gross margin before
+their other costs. Canceled seats and canceled player domains are removed from
+the platform quantity reconciliation.
+
 ## Database
 
-All migrations through `20260723010000_managed_domain_status.sql` are applied to the linked project. They include billing state, analytics, slug availability, hosted-video ownership, and managed-domain fulfillment status.
+Migrations include billing state, analytics, slug availability, hosted-video
+ownership, managed-domain fulfillment, partner/white-label tenants, and the
+trialing Stripe subscription state. Apply all files in
+`supabase/migrations/` to the linked project before enabling partner billing.

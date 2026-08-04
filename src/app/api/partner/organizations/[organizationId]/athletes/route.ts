@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAppUrl } from "@/lib/stripe";
 import { normalizeProfileSlug, profileSlugError } from "@/lib/slug";
+import { partnerBuilderHostname } from "@/lib/domain-name";
 import { inviteOrFindUser, partnerAccess } from "@/lib/partners";
 import { syncPartnerWholesaleBilling } from "@/lib/partner-billing";
 
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ or
   try {
     const invited = await inviteOrFindUser(
       email,
-      `${getAppUrl()}/auth/callback?next=${encodeURIComponent("/dashboard")}`,
+      `${access.organization.profile_domain && access.organization.profile_domain_status === "active" ? `https://${partnerBuilderHostname(access.organization.profile_domain)}` : getAppUrl()}/auth/callback?next=${encodeURIComponent("/dashboard")}`,
       { partner_organization_id: organizationId, partner_organization_name: access.organization.name, partner_role: "athlete" },
     );
     const owned = await admin.from("players").select("id").eq("user_id", invited.user.id).maybeSingle();

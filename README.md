@@ -15,6 +15,8 @@ A mobile-first builder for baseball players and families to create a polished re
 - Automated standard-price .com search, purchase, renewal, and Vercel project connection
 - Authenticated player dashboard for site management, billing, usage, domain status, and paid analytics
 - Allowlisted, read-only admin dashboard for MRR, revenue, churn, users, plans, domains, video, and engagement
+- Partner and white-label workspaces with team roles, connected Stripe Payment Links, athlete checkout routing, and wholesale seat billing
+- White-label apex-domain connection with `build.` builder hosting and wildcard athlete subdomains
 - Landscape and vertical Remotion marketing-video compositions
 - A new baseball-focused marketing and pricing homepage
 
@@ -37,7 +39,7 @@ address redirects there. Add one or more comma-separated owner emails to
 The linked project reference is `fyhfikfhusuaepsvzcui`. The database schema lives in:
 
 ```
-supabase/migrations/20260711000000_initial_schema.sql
+supabase/migrations/
 ```
 
 Apply it after authenticating and linking:
@@ -68,6 +70,12 @@ Subscribe it to:
 Then set `STRIPE_WEBHOOK_SECRET`.
 
 Enable the Stripe Customer Portal for subscription cancellation and plan management.
+
+For partner billing, also configure Stripe Connect OAuth and a Connect webhook
+for `/api/stripe/connect-webhook`. Partners connect their own Stripe account,
+paste recurring Payment Links in their workspace, and each athlete receives a
+tokenized `/p/{token}` checkout route. The Connect webhook is required for
+cancellations to revoke access and reduce wholesale seat quantity.
 
 ## Production
 

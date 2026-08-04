@@ -17,6 +17,9 @@ type Organization = {
   pro_wholesale_cents: number;
   elite_wholesale_cents: number;
   white_label_monthly_cents: number;
+  profile_domain: string | null;
+  profile_domain_status: string;
+  profile_domain_error: string | null;
   partner_memberships?: Array<{ id: string }>;
   players?: Array<{ id: string; partner_plan: string; partner_billing_status: string; is_published: boolean }>;
 };
@@ -112,9 +115,9 @@ export default function AdminPartnerManager() {
       {loading ? <p className="flex items-center justify-center gap-2 p-10 text-sm text-white/35"><LoaderCircle className="h-4 w-4 animate-spin" />Loading partners</p> : (
         <div className="divide-y divide-white/[.06]">
           {organizations.map((organization) => {
-            const activeAthletes = (organization.players || []).filter((player) => ["active", "past_due", "canceling"].includes(player.partner_billing_status)).length;
+            const activeAthletes = (organization.players || []).filter((player) => ["trialing", "active", "past_due", "canceling"].includes(player.partner_billing_status)).length;
             return <article key={organization.id} className="grid gap-5 p-5 xl:grid-cols-[1fr_auto] xl:items-center">
-              <div className="flex min-w-0 gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/5"><Building2 className="h-4 w-4 text-white/45" /></span><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><strong className="truncate">{organization.name}</strong><span className="rounded-full border border-white/10 px-2 py-1 text-[10px] font-bold uppercase text-white/45">{organization.partnership_type.replace("_", " ")}</span><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${organization.status === "active" ? "bg-emerald-300/10 text-emerald-200" : "bg-white/5 text-white/40"}`}>{organization.status}</span></div><p className="mt-1 text-xs text-white/35">{organization.billing_email} · {activeAthletes} active athlete seats · Stripe {organization.stripe_account_status}</p>{organization.billing_sync_error && <p className="mt-2 text-xs text-red-200">Billing: {organization.billing_sync_error}</p>}</div></div>
+              <div className="flex min-w-0 gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/5"><Building2 className="h-4 w-4 text-white/45" /></span><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><strong className="truncate">{organization.name}</strong><span className="rounded-full border border-white/10 px-2 py-1 text-[10px] font-bold uppercase text-white/45">{organization.partnership_type.replace("_", " ")}</span><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${organization.status === "active" ? "bg-emerald-300/10 text-emerald-200" : "bg-white/5 text-white/40"}`}>{organization.status}</span></div><p className="mt-1 text-xs text-white/35">{organization.billing_email} · {activeAthletes} active athlete seats · Stripe {organization.stripe_account_status}</p>{organization.profile_domain && <p className="mt-1 text-xs text-white/35">White-label domain: {organization.profile_domain} · {organization.profile_domain_status}</p>}{organization.billing_sync_error && <p className="mt-2 text-xs text-red-200">Billing: {organization.billing_sync_error}</p>}{organization.profile_domain_error && <p className="mt-2 text-xs text-red-200">Domain: {organization.profile_domain_error}</p>}</div></div>
               <div className="flex flex-wrap gap-2">
                 <a href={`/partner/${organization.id}`} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-white/60 hover:text-white">Open workspace</a>
                 <select disabled={busy} value={organization.partnership_type} onChange={(event) => void updatePartner(organization.id, { partnershipType: event.target.value })} className="rounded-lg border border-white/10 bg-[#0a151e] px-3 py-2 text-xs font-bold"><option value="partner">Partner $8/$12</option><option value="white_label">White label $4/$6 + $200</option></select>
