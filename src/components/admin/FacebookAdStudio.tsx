@@ -52,18 +52,16 @@ function SimpleAdArtwork({ creative, format }: { creative: FacebookAdCreative; f
 
   if (creative.variant === "text-only") {
     const size = portrait ? 108 : 92;
-    const titleY = portrait ? 330 : 286;
+    const titleY = portrait ? 270 : 245;
     return <svg viewBox={`0 0 ${width} ${height}`} xmlns="http://www.w3.org/2000/svg" role="img" aria-label={creative.name} className="block h-full w-full">
       <rect width={width} height={height} fill="#f4f1ea" />
       <rect x="0" y="0" width={portrait ? 24 : 20} height={height} fill="#e5162a" />
-      {brand(false)}
-      <text x="54" y="178" fill="#e5162a" fontFamily="Arial, Helvetica, sans-serif" fontSize="18" fontWeight="900" letterSpacing="4">BASEBALL RECRUITING, SIMPLIFIED</text>
+      <text x="54" y={portrait ? 118 : 105} fill="#e5162a" fontFamily="Arial, Helvetica, sans-serif" fontSize="18" fontWeight="900" letterSpacing="4">FOR BASEBALL FAMILIES</text>
       <TextLines lines={creative.headline} x={54} y={titleY} size={size} lineHeight={size * 0.91} fill="#090a0c" />
-      <line x1="54" y1={portrait ? 720 : 630} x2="1026" y2={portrait ? 720 : 630} stroke="#090a0c" strokeOpacity="0.16" strokeWidth="3" />
-      <text x="54" y={portrait ? 802 : 702} fill="#090a0c" fontFamily="Arial, Helvetica, sans-serif" fontSize={portrait ? 31 : 28} fontWeight="700">Film · Stats · Academics · Story</text>
-      <rect x="54" y={portrait ? 900 : 775} width="972" height={portrait ? 248 : 205} rx="18" fill="#e5162a" />
-      <text x="540" y={portrait ? 1055 : 908} fill="#fff" fontFamily="Arial, Helvetica, sans-serif" fontSize={portrait ? 118 : 102} fontWeight="900" textAnchor="middle" letterSpacing="-4">START FREE.</text>
-      {footer(false)}
+      <line x1="54" y1={portrait ? 660 : 590} x2="1026" y2={portrait ? 660 : 590} stroke="#090a0c" strokeOpacity="0.16" strokeWidth="3" />
+      <text x="54" y={portrait ? 742 : 662} fill="#090a0c" fontFamily="Arial, Helvetica, sans-serif" fontSize={portrait ? 31 : 28} fontWeight="700">Film · Stats · Academics · Story</text>
+      <rect x="54" y={portrait ? 840 : 745} width="972" height={portrait ? 330 : 250} rx="18" fill="#e5162a" />
+      <text x="540" y={portrait ? 1042 : 905} fill="#fff" fontFamily="Arial, Helvetica, sans-serif" fontSize={portrait ? 118 : 102} fontWeight="900" textAnchor="middle" letterSpacing="-4">START FREE.</text>
     </svg>;
   }
 
