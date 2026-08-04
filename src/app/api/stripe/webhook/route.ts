@@ -37,17 +37,41 @@ async function recordPartnerWholesale(subscription: Stripe.Subscription) {
   };
   const catalog = await getPartnerCatalogPriceIds();
   const priceColumns = { base: "platform_base_item_id", pro: "platform_pro_item_id", elite: "platform_elite_item_id", domain: "platform_domain_item_id" } as const;
+  let hasWhiteLabelBase = false;
   for (const item of subscription.items.data) {
     const kind = catalogKindFromPrice(item.price, catalog);
+    if (item.price.id === catalog.whiteLabelBase) hasWhiteLabelBase = true;
     const column = kind ? priceColumns[kind] : null;
     if (column) values[column] = item.id;
   }
   if (subscription.status === "canceled") {
     Object.assign(values, { platform_base_item_id: null, platform_pro_item_id: null, platform_elite_item_id: null, platform_domain_item_id: null });
   }
+  if (hasWhiteLabelBase) {
+    values.status = ["active", "trialing", "past_due"].includes(subscription.status) ? "active" : "suspended";
+  }
   const { error } = await createAdminClient().from("partner_organizations").update(values).eq("id", organizationId);
   if (error) throw error;
   return true;
+}
+
+async function completePartnerWhiteLabelActivation(session: Stripe.Checkout.Session) {
+  const organizationId = session.metadata?.organization_id;
+  const subscriptionId = objectId(session.subscription);
+  const customerId = objectId(session.customer);
+  if (!organizationId || !subscriptionId || !customerId) throw new Error("White-label activation metadata is incomplete.");
+  const subscription = await getStripe().subscriptions.retrieve(subscriptionId);
+  if (!["active", "trialing", "past_due"].includes(subscription.status)) throw new Error("The white-label subscription is not active.");
+  const { error } = await createAdminClient().from("partner_organizations").update({
+    status: "active",
+    platform_stripe_customer_id: customerId,
+    platform_stripe_subscription_id: subscription.id,
+    platform_subscription_status: subscription.status,
+    billing_payment_method_ready: Boolean(subscription.default_payment_method),
+    billing_sync_error: null,
+  }).eq("id", organizationId);
+  if (error) throw error;
+  await recordPartnerWholesale(subscription);
 }
 
 function objectId(value: string | { id: string } | null) {
@@ -185,6 +209,8 @@ export async function POST(request: Request) {
       const session = event.data.object as Stripe.Checkout.Session;
       if (session.metadata?.kind === "partner_billing_setup") {
         await completePartnerBillingSetup(session);
+      } else if (session.metadata?.kind === "partner_white_label_activation") {
+        await completePartnerWhiteLabelActivation(session);
       } else if (typeof session.subscription === "string") {
         const subscription = await getStripe().subscriptions.retrieve(session.subscription);
         if (!(await recordPartnerWholesale(subscription))) await reconcileCustomer(subscription, event.created, true, event.id);

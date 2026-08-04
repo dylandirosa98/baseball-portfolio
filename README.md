@@ -16,7 +16,7 @@ A mobile-first builder for baseball players and families to create a polished re
 - Authenticated player dashboard for site management, billing, usage, domain status, and paid analytics
 - Allowlisted, read-only admin dashboard for MRR, revenue, churn, users, plans, domains, video, and engagement
 - Partner and white-label workspaces with team roles, connected Stripe Payment Links, athlete checkout routing, and wholesale seat billing
-- White-label apex-domain connection with `admin.` management, `builder.` editing, and wildcard athlete subdomains
+- White-label subdomain connection with `admin.` management, `builder.` editing, and athlete sites while preserving the partner's apex business website
 - Landscape and vertical Remotion marketing-video compositions
 - A new baseball-focused marketing and pricing homepage
 

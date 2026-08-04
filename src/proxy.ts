@@ -69,9 +69,9 @@ export async function proxy(request: NextRequest) {
   }
 
   // White-label domains are tenant-aware. The builder and admin hosts show
-  // their branded tools, while every other single-label child host maps to the player
-  // whose slug matches that label. The wildcard Vercel domain makes new
-  // athletes work without adding a new Vercel domain for each profile.
+  // their branded tools, while every other single-label child host maps to the
+  // player whose slug matches that label. Exact athlete hostnames are attached
+  // to Vercel when profiles are created, leaving the apex business site alone.
   let partnerOrganization: { id: string; profile_domain: string; status: string } | null = null;
   let partnerPrefix = "";
   const platformHost = hostname === PROFILE_DOMAIN || hostname === `www.${PROFILE_DOMAIN}` || hostname === "localhost" || hostname.endsWith(".localhost") || hostname.endsWith(".vercel.app");
@@ -90,11 +90,11 @@ export async function proxy(request: NextRequest) {
       .not("profile_domain", "is", null);
     const match = (organizations ?? []).find((organization) => {
       const domain = String(organization.profile_domain || "").toLowerCase();
-      return hostname === domain || hostname.endsWith(`.${domain}`);
+      return hostname.endsWith(`.${domain}`) && hostname !== `www.${domain}`;
     });
     if (match?.profile_domain) {
       partnerOrganization = match as { id: string; profile_domain: string; status: string };
-      partnerPrefix = hostname === match.profile_domain ? "" : hostname.slice(0, -(match.profile_domain.length + 1));
+      partnerPrefix = hostname.slice(0, -(match.profile_domain.length + 1));
     }
   }
 
@@ -103,9 +103,6 @@ export async function proxy(request: NextRequest) {
     const isBuilderHost = partnerPrefix === "builder";
     const isAdminHost = partnerPrefix === "admin";
     const isPlayerHost = Boolean(partnerPrefix) && !partnerPrefix.includes(".") && !["www", "builder", "admin"].includes(partnerPrefix);
-    if (!partnerPrefix || partnerPrefix === "www") {
-      return NextResponse.redirect(partnerAdminUrl(domain, request));
-    }
     if (isBuilderHost) {
       if (pathname === "/") {
         const url = request.nextUrl.clone();

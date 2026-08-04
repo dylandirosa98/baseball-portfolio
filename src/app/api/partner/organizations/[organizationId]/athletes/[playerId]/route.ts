@@ -20,7 +20,8 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ o
   const action = String(body.action || "");
   try {
     if (action === "activate" && result.data.partner_billing_source === "partner_paid") {
-      if (!access.organization.billing_payment_method_ready && !access.organization.wholesale_billing_exempt) return NextResponse.json({ error: "Set up partner billing first." }, { status: 409 });
+      const activatedWhiteLabel = access.organization.partnership_type === "white_label" && access.organization.status === "active";
+      if (!access.organization.billing_payment_method_ready && !access.organization.wholesale_billing_exempt && !activatedWhiteLabel) return NextResponse.json({ error: "Set up partner billing first." }, { status: 409 });
       const playerUpdate = await admin.from("players").update({ partner_billing_status: "active", billing_tier: result.data.partner_plan, subscription_status: "active" }).eq("id", playerId);
       if (playerUpdate.error) throw playerUpdate.error;
     } else if (action === "change_plan") {

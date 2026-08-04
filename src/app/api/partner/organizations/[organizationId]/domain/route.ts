@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { partnerAccess } from "@/lib/partners";
-import { isValidPartnerDomain, normalizePartnerDomain, partnerAdminHostname, partnerBuilderHostname } from "@/lib/domain-name";
+import { isValidPartnerDomain, normalizePartnerDomain, partnerAdminHostname, partnerBuilderHostname, partnerPlayerHostname } from "@/lib/domain-name";
 import { attachProjectDomain, getProjectDomain } from "@/lib/vercel-domains";
 
 function verificationRecords(domain: string, details: Awaited<ReturnType<typeof getProjectDomain>>) {
@@ -25,6 +25,9 @@ export async function POST(request: Request, context: { params: Promise<{ organi
   if (access.organization.partnership_type !== "white_label") {
     return NextResponse.json({ error: "A connected white-label domain is available only on white-label partnerships." }, { status: 409 });
   }
+  if (access.organization.status !== "active") {
+    return NextResponse.json({ error: "Activate white-label billing before connecting the branded subdomains." }, { status: 409 });
+  }
 
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
   const domain = normalizePartnerDomain(String(body.domain || access.organization.profile_domain || ""));
@@ -33,26 +36,26 @@ export async function POST(request: Request, context: { params: Promise<{ organi
   }
   const builderDomain = partnerBuilderHostname(domain);
   const adminDomain = partnerAdminHostname(domain);
-  const wildcardDomain = `*.${domain}`;
   const admin = createAdminClient();
   const claimed = await admin.from("partner_organizations").select("id").eq("profile_domain", domain).neq("id", organizationId).maybeSingle();
   if (claimed.error) return NextResponse.json({ error: claimed.error.message }, { status: 500 });
   if (claimed.data) return NextResponse.json({ error: "That domain is already connected to another organization." }, { status: 409 });
 
   try {
-    const [apex, builder, partnerAdmin, wildcard] = await Promise.all([
-      attachProjectDomain(domain),
+    const playerResult = await admin.from("players").select("slug").eq("organization_id", organizationId);
+    if (playerResult.error) throw playerResult.error;
+    const athleteDomains = (playerResult.data ?? []).map((player) => partnerPlayerHostname(player.slug, domain));
+    const [builder, partnerAdmin, ...athletes] = await Promise.all([
       attachProjectDomain(builderDomain),
       attachProjectDomain(adminDomain),
-      attachProjectDomain(wildcardDomain),
+      ...athleteDomains.map((athleteDomain) => attachProjectDomain(athleteDomain)),
     ]);
     const records = [
-      ...verificationRecords(domain, apex),
       ...verificationRecords(builderDomain, builder),
       ...verificationRecords(adminDomain, partnerAdmin),
-      ...verificationRecords(wildcardDomain, wildcard),
+      ...athletes.flatMap((details, index) => verificationRecords(athleteDomains[index], details)),
     ];
-    const verified = Boolean(apex?.verified && builder?.verified && partnerAdmin?.verified && wildcard?.verified);
+    const verified = Boolean(builder?.verified && partnerAdmin?.verified && athletes.every((details) => details?.verified));
     const update = await admin.from("partner_organizations").update({
       profile_domain: domain,
       profile_domain_status: verified ? "active" : "pending",
@@ -66,12 +69,13 @@ export async function POST(request: Request, context: { params: Promise<{ organi
       domain,
       builderDomain,
       adminDomain,
-      wildcardDomain,
+      athleteDomains,
       verified,
       verification: records,
       dns: {
-        apex: `The management dashboard is https://${adminDomain} and the builder is https://${builderDomain}.`,
-        wildcard: `The wildcard ${wildcardDomain} covers player subdomains; Vercel requires its nameserver method for wildcard certificates, so follow the verification records returned above.`,
+        apex: `${domain} is not connected to Diamond Profile and remains available for the partner's existing business website.`,
+        tools: `Point ${adminDomain} and ${builderDomain} to Vercel using the returned records.`,
+        athletes: `Add one wildcard CNAME at the registrar so *.${domain} points to Vercel. Diamond Profile attaches each exact athlete hostname to the project as the athlete is created.`,
       },
     });
   } catch (error) {

@@ -3,9 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAppUrl } from "@/lib/stripe";
 import { normalizeProfileSlug, profileSlugError } from "@/lib/slug";
-import { partnerBuilderHostname } from "@/lib/domain-name";
+import { partnerBuilderHostname, partnerPlayerHostname } from "@/lib/domain-name";
 import { inviteOrFindUser, partnerAccess } from "@/lib/partners";
 import { syncPartnerWholesaleBilling } from "@/lib/partner-billing";
+import { attachProjectDomain } from "@/lib/vercel-domains";
 
 function emailAddress(value: unknown) {
   const email = String(value || "").trim().toLowerCase();
@@ -42,7 +43,8 @@ export async function POST(request: NextRequest, context: { params: Promise<{ or
   const billingSource = body.billingSource === "partner_paid" ? "partner_paid" : "customer_subscription";
   const paymentLinkId = String(body.paymentLinkId || "");
   if (!firstName || !lastName || !email) return NextResponse.json({ error: "First name, last name, and a valid email are required." }, { status: 400 });
-  if (!access.organization.billing_payment_method_ready && !access.organization.wholesale_billing_exempt) {
+  const activatedWhiteLabel = access.organization.partnership_type === "white_label" && access.organization.status === "active";
+  if (!access.organization.billing_payment_method_ready && !access.organization.wholesale_billing_exempt && !activatedWhiteLabel) {
     return NextResponse.json({ error: "Add the organization billing card before creating paid athlete profiles." }, { status: 409 });
   }
 
@@ -87,6 +89,15 @@ export async function POST(request: NextRequest, context: { params: Promise<{ or
     }).select("*").single();
     if (inserted.error) throw inserted.error;
     createdPlayerId = inserted.data.id;
+
+    if (access.organization.partnership_type === "white_label" && access.organization.profile_domain) {
+      try {
+        await attachProjectDomain(partnerPlayerHostname(slug, access.organization.profile_domain));
+      } catch (domainError) {
+        const message = domainError instanceof Error ? domainError.message : "The athlete subdomain could not be connected.";
+        await admin.from("partner_organizations").update({ profile_domain_error: message.slice(0, 1000) }).eq("id", organizationId);
+      }
+    }
 
     await admin.from("partner_invitations").insert({
       organization_id: organizationId,

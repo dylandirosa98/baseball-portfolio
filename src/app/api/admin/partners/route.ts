@@ -6,8 +6,6 @@ import { getAppUrl, getStripe } from "@/lib/stripe";
 import { cancelPartnerOrganization, inviteOrFindUser } from "@/lib/partners";
 import { syncPartnerWholesaleBilling } from "@/lib/partner-billing";
 
-const COMPLIMENTARY_WHITE_LABEL_TEST_CODE = "DP-WL-TEST-7K4M9Q";
-
 function organizationSlug(value: unknown) {
   return String(value || "")
     .toLowerCase()
@@ -44,13 +42,8 @@ export async function POST(request: Request) {
   const slug = organizationSlug(body.slug || name);
   const ownerEmail = String(body.ownerEmail || "").trim().toLowerCase();
   const partnershipType = body.partnershipType === "white_label" ? "white_label" : "partner";
-  const testCode = String(body.testCode || "").trim().toUpperCase();
-  const complimentaryTest = partnershipType === "white_label" && testCode === COMPLIMENTARY_WHITE_LABEL_TEST_CODE;
   if (!name || slug.length < 3 || !/^\S+@\S+\.\S+$/.test(ownerEmail)) {
     return NextResponse.json({ error: "Organization name, URL slug, and owner email are required." }, { status: 400 });
-  }
-  if (testCode && !complimentaryTest) {
-    return NextResponse.json({ error: "That internal white-label test code is not valid." }, { status: 400 });
   }
 
   const admin = createAdminClient();
@@ -58,15 +51,15 @@ export async function POST(request: Request) {
     name,
     slug,
     partnership_type: partnershipType,
-    status: "active",
+    status: partnershipType === "white_label" ? "draft" : "active",
     billing_email: ownerEmail,
     support_email: ownerEmail,
     pro_wholesale_cents: partnershipType === "white_label" ? 400 : 800,
     elite_wholesale_cents: partnershipType === "white_label" ? 600 : 1200,
     domain_wholesale_cents: 1000,
     white_label_monthly_cents: 20000,
-    wholesale_billing_exempt: complimentaryTest,
-    wholesale_billing_exempt_reason: complimentaryTest ? "Internal owner white-label testing" : null,
+    wholesale_billing_exempt: false,
+    wholesale_billing_exempt_reason: null,
     hide_diamond_branding: partnershipType === "white_label",
     created_by: user.id,
   }).select("*").single();
@@ -103,7 +96,7 @@ export async function POST(request: Request) {
       auth_user_id: invited.user.id,
       status: invited.invited ? "pending" : "accepted",
     });
-    return NextResponse.json({ organization: { ...organization, platform_stripe_customer_id: customer.id }, invited: invited.invited, complimentaryTest });
+    return NextResponse.json({ organization: { ...organization, platform_stripe_customer_id: customer.id }, invited: invited.invited });
   } catch (setupError) {
     const message = setupError instanceof Error ? setupError.message : "Partner setup failed.";
     await admin.from("partner_organizations").update({ status: "draft", billing_sync_error: message.slice(0, 1000) }).eq("id", organization.id);

@@ -82,10 +82,12 @@ links, unpublishes its profiles, and cancels connected subscriptions.
 
 White-label organizations use the same workflow at lower wholesale prices and
 can replace the Diamond Profile logo, name, support email, accent color, and
-footer branding on their managed profiles. They can connect an apex domain from
-their workspace; management is served from `admin.<domain>`, the branded builder
-from `builder.<domain>`, and each athlete profile from `<slug>.<domain>`. Vercel wildcard domains require the
-nameserver verification records returned by the domain connection flow.
+footer branding on their managed profiles. They can connect their business
+domain from the workspace; management is served from `admin.<domain>`, the
+branded builder from `builder.<domain>`, and each athlete profile from
+`<slug>.<domain>`. The apex is never attached or redirected, so the partner's
+existing business website stays in place. The app attaches every exact athlete
+hostname to Vercel while the partner supplies the wildcard CNAME.
 
 White-label economics are explicit: Diamond Profile charges the organization
 $4/month for each Pro seat, $6/month for each Elite seat, $200/month for the
@@ -94,6 +96,11 @@ choose any retail price at or above the platform base in their connected Stripe
 checkout; for example, a $15 Pro checkout leaves an $11 gross margin before
 their other costs. Canceled seats and canceled player domains are removed from
 the platform quantity reconciliation.
+
+New white-label organizations begin in preview mode. Their invited owner can
+sign in, see the workspace, and prepare branding, but athlete and branded-domain
+features unlock only after the white-label platform checkout completes. That
+Stripe checkout accepts promotion codes.
 
 ## Database
 

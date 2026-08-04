@@ -66,8 +66,8 @@ export default function AdminPartnerManager() {
   async function createPartner(form: FormData) {
     setBusy(true); setMessage("");
     try {
-      const data = await jsonRequest("/api/admin/partners", { method: "POST", body: JSON.stringify({ name: form.get("name"), slug: form.get("slug"), ownerEmail: form.get("ownerEmail"), partnershipType: form.get("partnershipType"), testCode: form.get("testCode") }) });
-      setMessage(data.complimentaryTest ? "Complimentary white-label test account created. No base or athlete wholesale charges will be generated." : data.invited ? "Partner created and owner invitation sent." : "Partner created and connected to the existing owner account.");
+      const data = await jsonRequest("/api/admin/partners", { method: "POST", body: JSON.stringify({ name: form.get("name"), slug: form.get("slug"), ownerEmail: form.get("ownerEmail"), partnershipType: form.get("partnershipType") }) });
+      setMessage(data.invited ? "Partner created and owner invitation sent." : "Partner created and connected to the existing owner account.");
       await load();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Partner creation failed.");
@@ -102,12 +102,11 @@ export default function AdminPartnerManager() {
         <div><p className="text-xs font-bold uppercase tracking-[.18em] text-[#ff8a69]">Reseller operations</p><h3 className="mt-2 text-xl font-black">Partners and white labels</h3></div>
         <div className="flex gap-4 text-xs text-white/40"><span><strong className="block text-lg text-white">{totals.active}</strong>Active</span><span><strong className="block text-lg text-white">{totals.athletes}</strong>Athletes</span><span><strong className="block text-lg text-white">{totals.whiteLabel}</strong>White label</span></div>
       </div>
-      <form action={createPartner} className="grid gap-3 border-b border-white/10 bg-white/[.02] p-5 md:grid-cols-2 xl:grid-cols-[1fr_160px_1fr_150px_190px_auto]">
+      <form action={createPartner} className="grid gap-3 border-b border-white/10 bg-white/[.02] p-5 md:grid-cols-[1fr_180px_1fr_160px_auto]">
         <input name="name" required placeholder="Organization name" className="rounded-lg border border-white/10 bg-black/20 px-3 py-3 text-sm outline-none" />
         <input name="slug" required placeholder="workspace-slug" pattern="[a-z0-9-]+" className="rounded-lg border border-white/10 bg-black/20 px-3 py-3 text-sm outline-none" />
         <input name="ownerEmail" required type="email" placeholder="Owner email" className="rounded-lg border border-white/10 bg-black/20 px-3 py-3 text-sm outline-none" />
         <select name="partnershipType" className="rounded-lg border border-white/10 bg-[#0a151e] px-3 py-3 text-sm"><option value="partner">Partner</option><option value="white_label">White label</option></select>
-        <input name="testCode" placeholder="Internal test code (optional)" className="rounded-lg border border-white/10 bg-black/20 px-3 py-3 text-sm outline-none" />
         <button disabled={busy} className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#e5162a] px-5 text-sm font-black disabled:opacity-50">{busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}Create</button>
       </form>
       {message && <p className="border-b border-white/10 px-5 py-3 text-xs text-white/65">{message}</p>}
