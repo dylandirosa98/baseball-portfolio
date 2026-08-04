@@ -50,6 +50,44 @@ function SimpleAdArtwork({ creative, format }: { creative: FacebookAdCreative; f
     <image href={creative.image} x={x} y={y} width={w} height={h} preserveAspectRatio="xMidYMid slice" clipPath={`url(#simple-phone-${suffix})`} />
   </>;
 
+  if (creative.variant === "text-only") {
+    const size = portrait ? 108 : 92;
+    const titleY = portrait ? 330 : 286;
+    return <svg viewBox={`0 0 ${width} ${height}`} xmlns="http://www.w3.org/2000/svg" role="img" aria-label={creative.name} className="block h-full w-full">
+      <rect width={width} height={height} fill="#f4f1ea" />
+      <rect x="0" y="0" width={portrait ? 24 : 20} height={height} fill="#e5162a" />
+      {brand(false)}
+      <text x="54" y="178" fill="#e5162a" fontFamily="Arial, Helvetica, sans-serif" fontSize="18" fontWeight="900" letterSpacing="4">BASEBALL RECRUITING, SIMPLIFIED</text>
+      <TextLines lines={creative.headline} x={54} y={titleY} size={size} lineHeight={size * 0.91} fill="#090a0c" />
+      <line x1="54" y1={portrait ? 720 : 630} x2="1026" y2={portrait ? 720 : 630} stroke="#090a0c" strokeOpacity="0.16" strokeWidth="3" />
+      <text x="54" y={portrait ? 802 : 702} fill="#090a0c" fontFamily="Arial, Helvetica, sans-serif" fontSize={portrait ? 31 : 28} fontWeight="700">Film · Stats · Academics · Story</text>
+      <rect x="54" y={portrait ? 900 : 775} width="972" height={portrait ? 248 : 205} rx="18" fill="#e5162a" />
+      <text x="540" y={portrait ? 1055 : 908} fill="#fff" fontFamily="Arial, Helvetica, sans-serif" fontSize={portrait ? 118 : 102} fontWeight="900" textAnchor="middle" letterSpacing="-4">START FREE.</text>
+      {footer(false)}
+    </svg>;
+  }
+
+  if (creative.variant === "text-only-coach") {
+    const size = portrait ? 96 : 78;
+    const titleY = portrait ? 350 : 300;
+    const details = ["FILM", "STATS", "ACADEMICS", "CONTACT"];
+    return <svg viewBox={`0 0 ${width} ${height}`} xmlns="http://www.w3.org/2000/svg" role="img" aria-label={creative.name} className="block h-full w-full">
+      <rect width={width} height={height} fill="#08090b" />
+      <rect x="0" y="0" width={width} height={portrait ? 172 : 148} fill="#e5162a" />
+      <image href="/diamond-profile-logo.png" x="54" y="42" width="58" height="58" preserveAspectRatio="xMidYMid meet" />
+      <text x="128" y="78" fill="#fff" fontFamily="Arial, Helvetica, sans-serif" fontSize="20" fontWeight="900" letterSpacing="1.2">DIAMOND PROFILE</text>
+      <text x="54" y={portrait ? 245 : 212} fill="#ff6573" fontFamily="Arial, Helvetica, sans-serif" fontSize="18" fontWeight="900" letterSpacing="4">ONE CLEAR RECRUITING LINK</text>
+      <TextLines lines={creative.headline} x={54} y={titleY} size={size} lineHeight={size * 0.92} />
+      <text x="54" y={portrait ? 730 : 624} fill="#fff" fillOpacity="0.58" fontFamily="Arial, Helvetica, sans-serif" fontSize={portrait ? 30 : 26} fontWeight="700">Everything important. Nothing to hunt for.</text>
+      <g>{details.map((detail, index) => { const columns = 2; const x = 54 + (index % columns) * (portrait ? 496 : 350); const y = (portrait ? 820 : 700) + Math.floor(index / columns) * 105; return <g key={detail}><rect x={x} y={y} width={portrait ? 468 : 326} height="78" rx="39" fill="#fff" fillOpacity="0.07" stroke="#fff" strokeOpacity="0.14" /><circle cx={x + 40} cy={y + 39} r="17" fill="#e5162a" /><text x={x + 40} y={y + 47} fill="#fff" fontFamily="Arial, Helvetica, sans-serif" fontSize="22" fontWeight="900" textAnchor="middle">✓</text><text x={x + 72} y={y + 47} fill="#fff" fontFamily="Arial, Helvetica, sans-serif" fontSize={portrait ? 21 : 18} fontWeight="900" letterSpacing="1.6">{detail}</text></g>; })}</g>
+      <rect x={portrait ? 54 : 770} y={portrait ? 1090 : 700} width={portrait ? 972 : 256} height={portrait ? 100 : 288} rx="18" fill="#e5162a" />
+      <text x={portrait ? 540 : 898} y={portrait ? 1153 : 830} fill="#fff" fontFamily="Arial, Helvetica, sans-serif" fontSize={portrait ? 28 : 27} fontWeight="900" textAnchor="middle">BUILD IT FREE</text>
+      {!portrait && <text x="898" y="872" fill="#fff" fillOpacity="0.72" fontFamily="Arial, Helvetica, sans-serif" fontSize="18" fontWeight="700" textAnchor="middle">One player.</text>}
+      {!portrait && <text x="898" y="902" fill="#fff" fillOpacity="0.72" fontFamily="Arial, Helvetica, sans-serif" fontSize="18" fontWeight="700" textAnchor="middle">One profile.</text>}
+      {footer(true)}
+    </svg>;
+  }
+
   if (creative.variant === "free-offer") {
     return <svg viewBox={`0 0 ${width} ${height}`} xmlns="http://www.w3.org/2000/svg" role="img" aria-label={creative.name} className="block h-full w-full">
       <rect width={width} height={height} fill="#f2efe8" />
@@ -300,8 +338,8 @@ export default function FacebookAdStudio() {
   return (
     <section id="facebook-ads" className="overflow-hidden rounded-2xl border border-white/10 bg-[#08121a]">
       <div className="flex flex-col justify-between gap-5 border-b border-white/10 p-5 sm:flex-row sm:items-center sm:p-6">
-        <div><p className="text-xs font-bold uppercase tracking-[.18em] text-[#ff6673]">Facebook acquisition</p><h2 className="mt-2 text-2xl font-black">Parent-focused ad creative lab</h2><p className="mt-2 max-w-3xl text-sm leading-6 text-white/45">Twelve ready-to-test concepts: six minimal, direct-response offers and six parent story angles. Export each in square and portrait feed formats, then copy the matching ad text.</p></div>
-        <span className="flex w-fit shrink-0 items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-xs font-bold text-white/50"><Megaphone className="h-4 w-4 text-[#ff6673]" /> 12 concepts · 24 images</span>
+        <div><p className="text-xs font-bold uppercase tracking-[.18em] text-[#ff6673]">Facebook acquisition</p><h2 className="mt-2 text-2xl font-black">Parent-focused ad creative lab</h2><p className="mt-2 max-w-3xl text-sm leading-6 text-white/45">Fourteen ready-to-test concepts: eight minimal, direct-response offers and six parent story angles. Export each in square and portrait feed formats, then copy the matching ad text.</p></div>
+        <span className="flex w-fit shrink-0 items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-xs font-bold text-white/50"><Megaphone className="h-4 w-4 text-[#ff6673]" /> {facebookAdCreatives.length} concepts · {facebookAdCreatives.length * 2} images</span>
       </div>
 
       <div className="flex gap-2 overflow-x-auto border-b border-white/10 bg-black/15 p-3 sm:px-6">{(["simple", "parent"] as const).map((item) => <button key={item} onClick={() => { setSeries(item); setCreativeIndex(0); setError(""); }} className={`min-h-10 shrink-0 rounded-lg px-4 text-xs font-black transition ${series === item ? "bg-white text-black" : "border border-white/10 text-white/45 hover:text-white"}`}>{item === "simple" ? "Simple direct-response" : "Parent story angles"}</button>)}</div>

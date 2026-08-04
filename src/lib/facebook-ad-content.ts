@@ -11,7 +11,7 @@ export type FacebookAdCreative = {
   linkHeadline: string;
   description: string;
   cta: "Learn More" | "Sign Up";
-  variant: "phone" | "split" | "statement" | "free-offer" | "one-link" | "browser" | "checklist" | "before-after" | "question";
+  variant: "phone" | "split" | "statement" | "free-offer" | "one-link" | "browser" | "checklist" | "before-after" | "question" | "text-only" | "text-only-coach";
   series?: "parent" | "simple";
 };
 
@@ -120,6 +120,38 @@ export const facebookAdCreatives: FacebookAdCreative[] = [
     description: "Create and publish with Diamond Profile.",
     cta: "Sign Up",
     variant: "free-offer",
+    series: "simple",
+  },
+  {
+    id: "simple-better-profile-free",
+    name: "Build a better profile—free",
+    audience: "Parents of high-school baseball players",
+    angle: "Pure offer",
+    eyebrow: "DIAMOND PROFILE",
+    headline: ["Build a better", "baseball recruiting", "profile."],
+    supportingText: "Film, stats, academics, and story. One link.",
+    image: "/images/marketing-design-1.png",
+    primaryText: "Build a better baseball recruiting profile. Bring film, stats, academics, and the player's story together in one link—free.",
+    linkHeadline: "Build their profile free",
+    description: "The whole player. One link.",
+    cta: "Sign Up",
+    variant: "text-only",
+    series: "simple",
+  },
+  {
+    id: "simple-easy-for-coaches",
+    name: "Easy for coaches to scan",
+    audience: "Parents focused on clear recruiting presentation",
+    angle: "Coach clarity",
+    eyebrow: "ONE CLEAR RECRUITING LINK",
+    headline: ["Make it easy", "for coaches to see", "the whole player."],
+    supportingText: "Film, stats, academics, schedule, and contact information—one clear link.",
+    image: "/images/marketing-design-2.png",
+    primaryText: "Make it easy for coaches to see the whole player. Put film, stats, academics, schedule, and contact information in one clear link.",
+    linkHeadline: "Give coaches the full picture",
+    description: "Build their baseball profile free.",
+    cta: "Sign Up",
+    variant: "text-only-coach",
     series: "simple",
   },
   {
