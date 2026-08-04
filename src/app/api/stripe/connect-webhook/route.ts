@@ -66,23 +66,6 @@ export async function POST(request: Request) {
   if (duplicate.data?.status === "processed") return NextResponse.json({ received: true, duplicate: true });
   await admin.from("stripe_webhook_events").upsert({ id: event.id, type: `connect:${event.type}`, created: event.created, status: "processing", error: null });
   try {
-    if (event.type === "account.updated") {
-      const account = event.data.object as Stripe.Account;
-      const status = account.charges_enabled && account.payouts_enabled ? "active" : account.details_submitted ? "restricted" : "pending";
-      const update = await admin.from("partner_organizations").update({ stripe_account_status: status }).eq("stripe_account_id", account.id);
-      if (update.error) throw update.error;
-    }
-    if (event.type === "account.application.deauthorized" && event.account) {
-      const organization = await admin.from("partner_organizations").select("id").eq("stripe_account_id", event.account).maybeSingle();
-      if (organization.error) throw organization.error;
-      if (organization.data) {
-        await admin.from("partner_organizations").update({ stripe_account_status: "disconnected" }).eq("id", organization.data.id);
-        await admin.from("partner_payment_links").update({ active: false }).eq("organization_id", organization.data.id);
-        await admin.from("partner_profile_checkouts").update({ active: false }).eq("organization_id", organization.data.id);
-        await admin.from("players").update({ partner_billing_status: "unpaid", billing_tier: "free", subscription_status: "unpaid", is_published: false }).eq("organization_id", organization.data.id).eq("partner_billing_source", "customer_subscription");
-        await syncPartnerWholesaleBilling(organization.data.id);
-      }
-    }
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
       const token = session.client_reference_id;

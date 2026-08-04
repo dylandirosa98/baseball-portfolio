@@ -38,7 +38,7 @@ export default function AdminPartnerManager() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  const [connectConfig, setConnectConfig] = useState({ clientIdConfigured: false, webhookConfigured: false });
+  const [connectConfig, setConnectConfig] = useState({ snapshotWebhookConfigured: false, thinWebhookConfigured: false });
 
   async function load() {
     setLoading(true);
@@ -85,14 +85,16 @@ export default function AdminPartnerManager() {
     } finally { setBusy(false); }
   }
 
-  async function saveConnectClientId(form: FormData) {
+  async function bootstrapConnect() {
     setBusy(true); setMessage("");
     try {
-      const data = await jsonRequest("/api/admin/partners/stripe-connect-config", { method: "PUT", body: JSON.stringify({ clientId: form.get("clientId") }) });
-      setConnectConfig(data);
-      setMessage("Stripe Connect OAuth is configured. Partners can now connect their Stripe accounts.");
+      const data = await jsonRequest("/api/admin/partners/stripe-connect-bootstrap", { method: "POST" });
+      setMessage(data.needsRedeploy
+        ? "Stripe Connect webhooks were created and installed in Vercel. Redeploy production once to activate them."
+        : "Stripe Connect webhooks are already configured.");
+      await load();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Stripe Connect configuration failed.");
+      setMessage(error instanceof Error ? error.message : "Stripe Connect webhooks could not be configured.");
     } finally { setBusy(false); }
   }
 
@@ -110,9 +112,9 @@ export default function AdminPartnerManager() {
         <button disabled={busy} className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#e5162a] px-5 text-sm font-black disabled:opacity-50">{busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}Create</button>
       </form>
       {message && <p className="border-b border-white/10 px-5 py-3 text-xs text-white/65">{message}</p>}
-      <div className="grid gap-4 border-b border-white/10 p-5 lg:grid-cols-[1fr_auto] lg:items-end">
-        <div><p className="text-xs font-bold uppercase tracking-[.16em] text-white/35">Stripe Connect infrastructure</p><div className="mt-3 flex flex-wrap gap-2"><span className={`rounded-full px-3 py-1.5 text-[10px] font-bold uppercase ${connectConfig.webhookConfigured ? "bg-emerald-300/10 text-emerald-200" : "bg-red-300/10 text-red-200"}`}>Webhook {connectConfig.webhookConfigured ? "active" : "missing"}</span><span className={`rounded-full px-3 py-1.5 text-[10px] font-bold uppercase ${connectConfig.clientIdConfigured ? "bg-emerald-300/10 text-emerald-200" : "bg-amber-300/10 text-amber-100"}`}>OAuth client {connectConfig.clientIdConfigured ? "active" : "needed"}</span></div></div>
-        {!connectConfig.clientIdConfigured && <form action={saveConnectClientId} className="flex min-w-0 gap-2"><input name="clientId" required placeholder="ca_... Stripe Connect client ID" className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/20 px-3 py-3 text-sm outline-none lg:w-80" /><button disabled={busy} className="rounded-lg bg-white px-4 py-3 text-xs font-black text-black">Enable Connect</button></form>}
+      <div className="flex flex-col justify-between gap-4 border-b border-white/10 p-5 sm:flex-row sm:items-center">
+        <div><p className="text-xs font-bold uppercase tracking-[.16em] text-white/35">Stripe Connect infrastructure</p><div className="mt-3 flex flex-wrap gap-2"><span className={`rounded-full px-3 py-1.5 text-[10px] font-bold uppercase ${connectConfig.snapshotWebhookConfigured ? "bg-emerald-300/10 text-emerald-200" : "bg-red-300/10 text-red-200"}`}>Payments webhook {connectConfig.snapshotWebhookConfigured ? "active" : "missing"}</span><span className={`rounded-full px-3 py-1.5 text-[10px] font-bold uppercase ${connectConfig.thinWebhookConfigured ? "bg-emerald-300/10 text-emerald-200" : "bg-red-300/10 text-red-200"}`}>Account webhook {connectConfig.thinWebhookConfigured ? "active" : "missing"}</span><span className="rounded-full bg-emerald-300/10 px-3 py-1.5 text-[10px] font-bold uppercase text-emerald-200">V2 Account Links active</span></div></div>
+        {(!connectConfig.snapshotWebhookConfigured || !connectConfig.thinWebhookConfigured) && <button type="button" disabled={busy} onClick={() => void bootstrapConnect()} className="shrink-0 rounded-lg bg-white px-4 py-3 text-xs font-black text-black disabled:opacity-50">Configure webhooks</button>}
       </div>
       {loading ? <p className="flex items-center justify-center gap-2 p-10 text-sm text-white/35"><LoaderCircle className="h-4 w-4 animate-spin" />Loading partners</p> : (
         <div className="divide-y divide-white/[.06]">

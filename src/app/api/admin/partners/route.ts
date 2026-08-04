@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isPlatformAdmin } from "@/lib/admin-auth";
-import { getAppUrl, getStripe } from "@/lib/stripe";
+import { getAppUrl } from "@/lib/stripe";
 import { cancelPartnerOrganization, inviteOrFindUser } from "@/lib/partners";
 import { syncPartnerWholesaleBilling } from "@/lib/partner-billing";
+import { createPartnerStripeAccount } from "@/lib/stripe-connect";
 
 function organizationSlug(value: unknown) {
   return String(value || "")
@@ -68,12 +69,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    const customer = await getStripe().customers.create({
-      email: ownerEmail,
-      name,
-      metadata: { kind: "partner_wholesale", organization_id: organization.id, partnership_type: partnershipType },
+    const stripeAccount = await createPartnerStripeAccount({
+      organizationId: organization.id,
+      displayName: name,
+      contactEmail: ownerEmail,
     });
-    await admin.from("partner_organizations").update({ platform_stripe_customer_id: customer.id }).eq("id", organization.id);
 
     const redirectTo = `${getAppUrl()}/auth/callback?next=${encodeURIComponent(`/partner/${organization.id}`)}`;
     const invited = await inviteOrFindUser(ownerEmail, redirectTo, {
@@ -96,7 +96,11 @@ export async function POST(request: Request) {
       auth_user_id: invited.user.id,
       status: invited.invited ? "pending" : "accepted",
     });
-    return NextResponse.json({ organization: { ...organization, platform_stripe_customer_id: customer.id }, invited: invited.invited });
+    return NextResponse.json({ organization: {
+      ...organization,
+      stripe_account_id: stripeAccount.account.id,
+      stripe_account_status: stripeAccount.state.status,
+    }, invited: invited.invited });
   } catch (setupError) {
     const message = setupError instanceof Error ? setupError.message : "Partner setup failed.";
     await admin.from("partner_organizations").update({ status: "draft", billing_sync_error: message.slice(0, 1000) }).eq("id", organization.id);

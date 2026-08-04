@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "stripe:listen": "stripe listen --events checkout.session.completed,customer.subscription.created,customer.subscription.updated,customer.subscription.deleted --forward-to http://localhost:3000/api/stripe/webhook",
+    "stripe:listen:connect-v2": "stripe listen --thin-events 'v2.core.account[requirements].updated,v2.core.account[configuration.merchant].capability_status_updated,v2.core.account[configuration.customer].capability_status_updated,v2.core.account.updated,v2.core.account.closed' --forward-thin-to http://localhost:3000/api/stripe/connect-v2-webhook",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -41,7 +42,7 @@
     "react-player": "^3.4.0",
     "remotion": "^4.0.330",
     "sharp": "^0.35.3",
-    "stripe": "^22.3.2"
+    "stripe": "^22.4.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

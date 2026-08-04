@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { getAppUrl, getStripe } from "@/lib/stripe";
 import { partnerAccess } from "@/lib/partners";
 import { getPartnerCatalogPriceIds } from "@/lib/partner-stripe-catalog";
 import { partnerAdminHostname } from "@/lib/domain-name";
+import { createPartnerStripeAccount } from "@/lib/stripe-connect";
 
 export async function POST(request: Request, context: { params: Promise<{ organizationId: string }> }) {
   const { organizationId } = await context.params;
@@ -15,16 +15,14 @@ export async function POST(request: Request, context: { params: Promise<{ organi
   if (!access) return NextResponse.json({ error: "Partner administrator access is required." }, { status: 403 });
 
   const stripe = getStripe();
-
-  let customerId = access.organization.platform_stripe_customer_id;
-  if (!customerId) {
-    const customer = await stripe.customers.create({
-      email: access.organization.billing_email || user.email || undefined,
-      name: access.organization.name,
-      metadata: { kind: "partner_wholesale", organization_id: organizationId },
+  let accountId = access.organization.stripe_account_id;
+  if (!accountId) {
+    const created = await createPartnerStripeAccount({
+      organizationId,
+      displayName: access.organization.name,
+      contactEmail: access.organization.billing_email || user.email || "",
     });
-    customerId = customer.id;
-    await createAdminClient().from("partner_organizations").update({ platform_stripe_customer_id: customerId }).eq("id", organizationId);
+    accountId = created.account.id;
   }
 
   const requestUrl = new URL(request.url);
@@ -38,7 +36,7 @@ export async function POST(request: Request, context: { params: Promise<{ organi
   if (access.organization.partnership_type === "white_label") {
     if (access.organization.platform_stripe_subscription_id && ["active", "trialing", "past_due"].includes(access.organization.platform_subscription_status)) {
       const portal = await stripe.billingPortal.sessions.create({
-        customer: customerId,
+        customer_account: accountId,
         return_url: `${origin}/partner/${organizationId}`,
       });
       return NextResponse.json({ url: portal.url });
@@ -46,7 +44,7 @@ export async function POST(request: Request, context: { params: Promise<{ organi
     const prices = await getPartnerCatalogPriceIds();
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
-      customer: customerId,
+      customer_account: accountId,
       line_items: [{ price: prices.whiteLabelBase, quantity: 1 }],
       allow_promotion_codes: true,
       payment_method_collection: "if_required",
@@ -61,7 +59,7 @@ export async function POST(request: Request, context: { params: Promise<{ organi
 
   const session = await stripe.checkout.sessions.create({
     mode: "setup",
-    customer: customerId,
+    customer_account: accountId,
     payment_method_types: ["card"],
     success_url: `${origin}/partner/${organizationId}?billing=ready&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origin}/partner/${organizationId}?billing=canceled`,

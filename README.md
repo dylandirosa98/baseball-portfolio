@@ -71,11 +71,28 @@ Then set `STRIPE_WEBHOOK_SECRET`.
 
 Enable the Stripe Customer Portal for subscription cancellation and plan management.
 
-For partner billing, also configure Stripe Connect OAuth and a Connect webhook
-for `/api/stripe/connect-webhook`. Partners connect their own Stripe account,
-paste recurring Payment Links in their workspace, and each athlete receives a
-tokenized `/p/{token}` checkout route. The Connect webhook is required for
-cancellations to revoke access and reduce wholesale seat quantity.
+Partner billing uses Stripe Accounts v2 with Stripe-hosted Account Links. No
+Connect OAuth client ID is required. Diamond Profile creates a V2 Account with
+merchant and customer configurations, stores its `acct_` ID on the partner
+organization, and reads onboarding/capability status directly from Stripe.
+
+Create two Connect event destinations:
+
+1. A snapshot destination for **events on connected accounts** at
+   `/api/stripe/connect-webhook`, subscribed to
+   `checkout.session.completed`, `customer.subscription.created`,
+   `customer.subscription.updated`, and `customer.subscription.deleted`. Store
+   its signing secret as `STRIPE_CONNECT_WEBHOOK_SECRET`.
+2. A **Thin** destination at `/api/stripe/connect-v2-webhook`, subscribed to
+   `v2.core.account[requirements].updated`,
+   `v2.core.account[configuration.merchant].capability_status_updated`,
+   `v2.core.account[configuration.customer].capability_status_updated`,
+   `v2.core.account.updated`, and `v2.core.account.closed`. Store its signing
+   secret as `STRIPE_CONNECT_V2_WEBHOOK_SECRET`.
+
+Partners create recurring Pro/Elite checkouts in their own connected account.
+Athlete revenue remains in that account; Diamond Profile separately charges the
+same V2 Account as a `customer_account` for wholesale seats.
 
 ## Production
 

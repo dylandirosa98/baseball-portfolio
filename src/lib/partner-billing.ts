@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe";
 import type { PartnerOrganizationRow } from "@/lib/partners";
 import { getPartnerCatalogPriceIds } from "@/lib/partner-stripe-catalog";
+import { retrievePartnerStripeAccount } from "@/lib/stripe-connect";
 
 type WholesaleKind = "base" | "pro" | "elite" | "domain";
 
@@ -78,8 +79,8 @@ export async function syncPartnerWholesaleBilling(organizationId: string) {
     await recordSync(organizationId, { billing_sync_error: message, billing_synced_at: new Date().toISOString() });
     throw new Error(message);
   }
-  if (!organization.platform_stripe_customer_id) {
-    const message = "Partner wholesale Stripe customer is not configured.";
+  if (!organization.stripe_account_id) {
+    const message = "Complete Stripe account setup before activating paid athlete profiles.";
     await recordSync(organizationId, { billing_sync_error: message, billing_synced_at: new Date().toISOString() });
     throw new Error(message);
   }
@@ -112,12 +113,12 @@ export async function syncPartnerWholesaleBilling(organizationId: string) {
 
   try {
     if (!subscription) {
-      const customer = await stripe.customers.retrieve(organization.platform_stripe_customer_id);
-      if (customer.deleted || !customer.invoice_settings.default_payment_method) {
+      const account = await retrievePartnerStripeAccount(organization.stripe_account_id);
+      if (!account.configuration?.customer?.billing?.default_payment_method) {
         throw new Error("Complete partner billing setup before activating paid athlete profiles.");
       }
       subscription = await stripe.subscriptions.create({
-        customer: organization.platform_stripe_customer_id,
+        customer_account: organization.stripe_account_id,
         items: desired.map((item) => ({ price: item.price, quantity: item.quantity })),
         collection_method: "charge_automatically",
         metadata: { kind: "partner_wholesale", organization_id: organizationId },

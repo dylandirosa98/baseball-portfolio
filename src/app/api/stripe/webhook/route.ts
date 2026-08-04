@@ -11,18 +11,20 @@ export const runtime = "nodejs";
 
 async function completePartnerBillingSetup(session: Stripe.Checkout.Session) {
   const organizationId = session.metadata?.organization_id;
-  const customerId = objectId(session.customer);
+  const accountId = session.customer_account;
   const setupIntentId = objectId(session.setup_intent);
-  if (!organizationId || !customerId || !setupIntentId) throw new Error("Partner billing setup metadata is incomplete.");
+  if (!organizationId || !accountId || !setupIntentId) throw new Error("Partner billing setup metadata is incomplete.");
   const setupIntent = await getStripe().setupIntents.retrieve(setupIntentId);
   const paymentMethodId = objectId(setupIntent.payment_method);
   if (!paymentMethodId) throw new Error("Partner billing setup has no payment method.");
-  await getStripe().customers.update(customerId, { invoice_settings: { default_payment_method: paymentMethodId } });
+  // A V2 Account with the customer configuration replaces the legacy cus_ ID.
+  await getStripe().v2.core.accounts.update(accountId, {
+    configuration: { customer: { billing: { default_payment_method: paymentMethodId } } },
+  });
   const { error } = await createAdminClient().from("partner_organizations").update({
-    platform_stripe_customer_id: customerId,
     billing_payment_method_ready: true,
     billing_sync_error: null,
-  }).eq("id", organizationId);
+  }).eq("id", organizationId).eq("stripe_account_id", accountId);
   if (error) throw error;
   await syncPartnerWholesaleBilling(organizationId);
 }
@@ -58,18 +60,17 @@ async function recordPartnerWholesale(subscription: Stripe.Subscription) {
 async function completePartnerWhiteLabelActivation(session: Stripe.Checkout.Session) {
   const organizationId = session.metadata?.organization_id;
   const subscriptionId = objectId(session.subscription);
-  const customerId = objectId(session.customer);
-  if (!organizationId || !subscriptionId || !customerId) throw new Error("White-label activation metadata is incomplete.");
+  const accountId = session.customer_account;
+  if (!organizationId || !subscriptionId || !accountId) throw new Error("White-label activation metadata is incomplete.");
   const subscription = await getStripe().subscriptions.retrieve(subscriptionId);
   if (!["active", "trialing", "past_due"].includes(subscription.status)) throw new Error("The white-label subscription is not active.");
   const { error } = await createAdminClient().from("partner_organizations").update({
     status: "active",
-    platform_stripe_customer_id: customerId,
     platform_stripe_subscription_id: subscription.id,
     platform_subscription_status: subscription.status,
     billing_payment_method_ready: Boolean(subscription.default_payment_method),
     billing_sync_error: null,
-  }).eq("id", organizationId);
+  }).eq("id", organizationId).eq("stripe_account_id", accountId);
   if (error) throw error;
   await recordPartnerWholesale(subscription);
 }

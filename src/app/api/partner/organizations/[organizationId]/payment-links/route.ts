@@ -127,11 +127,14 @@ export async function PATCH(request: Request, context: { params: Promise<{ organ
     const oldPrice = await stripe.prices.retrieve(existing.data.stripe_price_id, {}, options);
     const productId = typeof oldPrice.product === "string" ? oldPrice.product : oldPrice.product?.id;
     if (!productId || !oldPrice.recurring) throw new Error("The existing Stripe price is no longer available.");
+    const supportedIntervals = ["day", "week", "month", "year"] as const;
+    const interval = supportedIntervals.find((value) => value === String(oldPrice.recurring?.interval));
+    if (!interval) throw new Error("The existing Stripe recurring interval is not supported.");
     const newPrice = await stripe.prices.create({
       product: productId,
       currency: oldPrice.currency,
       unit_amount: cents,
-      recurring: { interval: oldPrice.recurring.interval, interval_count: oldPrice.recurring.interval_count || 1 },
+      recurring: { interval, interval_count: oldPrice.recurring.interval_count || 1 },
       metadata: { managed_by: "diamond_profile", organization_id: organizationId, tier: existing.data.tier },
     }, options);
     const newLink = await stripe.paymentLinks.create({

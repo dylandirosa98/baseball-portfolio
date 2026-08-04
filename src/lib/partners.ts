@@ -17,6 +17,9 @@ export type PartnerOrganizationRow = {
   billing_email: string | null;
   stripe_account_id: string | null;
   stripe_account_status: "not_connected" | "pending" | "active" | "restricted" | "disconnected";
+  stripe_onboarding_complete: boolean;
+  stripe_requirements_status: "currently_due" | "eventually_due" | "past_due" | null;
+  stripe_status_checked_at: string | null;
   platform_stripe_customer_id: string | null;
   platform_stripe_subscription_id: string | null;
   platform_subscription_status: string;
