@@ -40,6 +40,7 @@ async function applySubscription(event: Stripe.Event, subscription: Stripe.Subsc
     subscription_status: entitled ? subscription.status : "canceled",
     partner_stripe_customer_id: customerId,
     partner_stripe_subscription_id: subscription.id,
+    partner_payment_link_id: mapped.data.payment_link_id,
     partner_access_expires_at: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
     ...(entitled ? {} : { is_published: false, has_custom_domain: false, custom_domain_status: "canceled" }),
   }).eq("id", mapped.data.player_id);

@@ -7,6 +7,7 @@ import { partnerPlayerHostname } from "@/lib/domain-name";
 import { generatePartnerAthleteAccessLink, partnerAccess } from "@/lib/partners";
 import { syncPartnerWholesaleBilling } from "@/lib/partner-billing";
 import { attachProjectDomain } from "@/lib/vercel-domains";
+import { createManagedPartnerPrice } from "@/lib/partner-pricing";
 
 function emailAddress(value: unknown) {
   const email = String(value || "").trim().toLowerCase();
@@ -40,7 +41,16 @@ export async function POST(request: NextRequest, context: { params: Promise<{ or
   const lastName = String(body.lastName || "").trim().slice(0, 80);
   const email = emailAddress(body.email);
   const plan = body.plan === "elite" ? "elite" : "pro";
-  const billingSource = body.billingSource === "partner_paid" ? "partner_paid" : "customer_subscription";
+  const pricingMode = body.pricingMode === "custom" ? "custom" : body.pricingMode === "free" ? "free" : "catalog";
+  const requestedRetailCents = Number(body.retailPriceCents);
+  if (pricingMode === "custom" && (!Number.isInteger(requestedRetailCents) || requestedRetailCents < 0 || requestedRetailCents > 1_000_000)) {
+    return NextResponse.json({ error: "Enter a custom monthly price between $0 and $10,000." }, { status: 400 });
+  }
+  // A free athlete offer is activated without a Stripe checkout. The partner
+  // still pays the normal wholesale seat through platform billing.
+  const billingSource = pricingMode === "free" || (pricingMode === "custom" && requestedRetailCents === 0)
+    ? "partner_paid"
+    : "customer_subscription";
   const creationMode = body.creationMode === "organization_builds" ? "organization_builds" : "athlete_builds";
   const paymentLinkId = String(body.paymentLinkId || "");
   if (!firstName || !lastName || !email) return NextResponse.json({ error: "First name, last name, and a valid email are required." }, { status: 400 });
@@ -51,11 +61,13 @@ export async function POST(request: NextRequest, context: { params: Promise<{ or
 
   const admin = createAdminClient();
   let paymentLink: { id: string; tier: string } | null = null;
-  if (billingSource === "customer_subscription") {
-    const result = await admin.from("partner_payment_links").select("id, tier").eq("id", paymentLinkId).eq("organization_id", organizationId).eq("active", true).maybeSingle();
+  if (billingSource === "customer_subscription" && pricingMode === "catalog") {
+    let query = admin.from("partner_payment_links").select("id, tier").eq("organization_id", organizationId).eq("tier", plan).eq("pricing_scope", "catalog").eq("active", true);
+    if (paymentLinkId) query = query.eq("id", paymentLinkId);
+    const result = await query.maybeSingle();
     if (result.error) return NextResponse.json({ error: result.error.message }, { status: 500 });
     paymentLink = result.data;
-    if (!paymentLink || paymentLink.tier !== plan) return NextResponse.json({ error: `Select a verified ${plan} payment link.` }, { status: 400 });
+    if (!paymentLink || paymentLink.tier !== plan) return NextResponse.json({ error: `The ${plan} checkout is not ready. Reconnect Stripe or open Price Management.` }, { status: 400 });
   }
 
   let createdPlayerId: string | null = null;
@@ -91,6 +103,22 @@ export async function POST(request: NextRequest, context: { params: Promise<{ or
     }).select("*").single();
     if (inserted.error) throw inserted.error;
     createdPlayerId = inserted.data.id;
+
+    if (billingSource === "customer_subscription" && pricingMode === "custom") {
+      const custom = await createManagedPartnerPrice({
+        organization: access.organization,
+        tier: plan,
+        priceCents: requestedRetailCents,
+        name: `${firstName} ${lastName} · Custom ${plan === "pro" ? "Pro" : "Elite"}`,
+        createdBy: user.id,
+        scope: "athlete",
+        playerId: inserted.data.id,
+        idempotencySeed: `partner_athlete_price_${organizationId}_${inserted.data.id}_${requestedRetailCents}`,
+      });
+      paymentLink = { id: custom.paymentLink.id, tier: plan };
+      const assigned = await admin.from("players").update({ partner_payment_link_id: paymentLink.id }).eq("id", inserted.data.id);
+      if (assigned.error) throw assigned.error;
+    }
 
     if (access.organization.partnership_type === "white_label" && access.organization.profile_domain) {
       try {
@@ -129,6 +157,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ or
       checkoutUrl,
       invitationUrl: `${getAppUrl()}/join/${invitation.data.token}`,
       creationMode,
+      pricingMode,
     });
   } catch (error) {
     if (createdPlayerId && billingSource === "partner_paid") {

@@ -25,7 +25,6 @@ import {
   Users,
   WalletCards,
   X,
-  Zap,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -164,7 +163,7 @@ function ProductSlide() {
               [Palette, "Three premium designs"],
               [Globe2, "Shareable player URL"],
               [ShieldCheck, "Academics and contacts"],
-              [Zap, "Update anytime"],
+              [CircleDollarSign, "Catalog + custom pricing"],
             ].map(([Icon, label]) => (
               <div key={String(label)} className="flex items-center gap-3 border border-white/10 bg-white/[.035] px-4 py-3 text-sm font-bold text-white/75">
                 <Icon className="h-4 w-4 text-[#f43a4b]" /> {String(label)}
@@ -310,7 +309,7 @@ function MoneySlide() {
       <div className="flex flex-1 flex-col justify-center py-10">
         <Eyebrow>Simple economics</Eyebrow>
         <SlideTitle compact>You own the sale. You keep the upside.</SlideTitle>
-        <p className="mt-5 max-w-3xl text-base leading-7 text-white/52 sm:text-lg">Each organization connects its Stripe account, sets its own retail price, and receives athlete payments directly. Diamond Profile bills wholesale separately.</p>
+        <p className="mt-5 max-w-3xl text-base leading-7 text-white/52 sm:text-lg">Each organization connects Stripe, controls catalog or athlete-specific pricing, and receives athlete payments directly. Diamond Profile bills wholesale separately—even when an athlete receives a free offer.</p>
         <div className="mt-9 grid gap-3 lg:grid-cols-[1fr_auto_1fr_auto_1fr] lg:items-stretch">
           {[
             [WalletCards, "01", "Athlete pays", "Checkout runs through your connected Stripe account at the retail price you choose."],

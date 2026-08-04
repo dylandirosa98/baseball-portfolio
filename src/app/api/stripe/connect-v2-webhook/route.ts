@@ -4,20 +4,25 @@ import type Stripe from "stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertStripeEventMode, getStripe } from "@/lib/stripe";
 import { cachePartnerStripeAccountStatus } from "@/lib/stripe-connect";
+import { ensurePartnerDefaultPricing } from "@/lib/partner-pricing";
+import type { PartnerOrganizationRow } from "@/lib/partners";
 
 export const runtime = "nodejs";
 
 async function synchronizeAccount(account: Stripe.V2.Core.Account) {
   const admin = createAdminClient();
   const { data: organization, error } = await admin.from("partner_organizations")
-    .select("id")
+    .select("*")
     .eq("stripe_account_id", account.id)
     .maybeSingle();
   if (error) throw error;
   // Events can arrive after an account was closed or removed locally. A missing
   // mapping is safe to acknowledge because there is no organization to update.
   if (!organization) return;
-  await cachePartnerStripeAccountStatus(organization.id, account);
+  const state = await cachePartnerStripeAccountStatus(organization.id, account);
+  if (state.status === "active") {
+    await ensurePartnerDefaultPricing({ ...organization, stripe_account_status: "active" } as PartnerOrganizationRow);
+  }
 }
 
 async function handleAccountNotification(notification: Stripe.V2.Core.EventNotification) {
