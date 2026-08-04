@@ -3,13 +3,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { BadgeDollarSign, Building2, Check, Copy, CreditCard, Globe2, Link2, Plus, Settings, Trash2, Users } from "lucide-react";
+import { BadgeDollarSign, Building2, Check, Copy, CreditCard, Eye, Globe2, Link2, Mail, Plus, Settings, Trash2, UserRoundPen, Users } from "lucide-react";
 import type { PartnerOrganizationRow, PartnerRole } from "@/lib/partners";
 import type { PartnerStripeAccountStatus } from "@/lib/stripe-connect";
 import { partnerAdminHostname, partnerBuilderHostname, partnerPlayerHostname } from "@/lib/domain-name";
 
 type PaymentLink = { id: string; name: string; tier: "pro" | "elite"; url: string; unit_amount: number | null; currency: string | null; platform_cost_cents?: number | null; partner_margin_cents?: number | null };
-type Athlete = { id: string; first_name: string; last_name: string; invited_email: string | null; slug: string; partner_plan: "pro" | "elite"; partner_billing_source: "customer_subscription" | "partner_paid"; partner_billing_status: string; billing_tier: string; is_published: boolean; has_custom_domain: boolean; custom_domain: string | null; custom_domain_status: string | null; partner_profile_checkouts?: Array<{ token: string; active: boolean }> };
+type Athlete = { id: string; first_name: string; last_name: string; invited_email: string | null; slug: string; partner_plan: "pro" | "elite"; partner_billing_source: "customer_subscription" | "partner_paid"; partner_billing_status: string; partner_creation_mode: "athlete_builds" | "organization_builds"; billing_tier: string; is_published: boolean; has_custom_domain: boolean; custom_domain: string | null; custom_domain_status: string | null; partner_profile_checkouts?: Array<{ token: string; active: boolean }>; partner_invitations?: Array<{ token: string; status: string; last_sent_at: string | null; athlete_creation_mode: "athlete_builds" | "organization_builds" }> };
 
 async function api(url: string, options?: RequestInit) {
   const response = await fetch(url, { ...options, headers: { "content-type": "application/json", ...(options?.headers || {}) } });
@@ -24,6 +24,7 @@ export default function PartnerDashboardClient({ organization, stripeStatus, rol
   const [busy, setBusy] = useState(false);
   const [plan, setPlan] = useState<"pro" | "elite">("pro");
   const [billingSource, setBillingSource] = useState<"customer_subscription" | "partner_paid">("customer_subscription");
+  const [creationMode, setCreationMode] = useState<"athlete_builds" | "organization_builds">("athlete_builds");
   const canAdmin = role === "owner" || role === "admin";
   const whiteLabelLocked = organization.partnership_type === "white_label" && organization.status !== "active";
   const builderHost = organization.profile_domain && organization.profile_domain_status === "active"
@@ -48,7 +49,21 @@ export default function PartnerDashboardClient({ organization, stripeStatus, rol
   }
 
   async function createAthlete(form: FormData) {
-    await run(() => api(`/api/partner/organizations/${organization.id}/athletes`, { method: "POST", body: JSON.stringify({ firstName: form.get("firstName"), lastName: form.get("lastName"), email: form.get("email"), position: form.get("position"), team: form.get("team"), plan, billingSource, paymentLinkId: form.get("paymentLinkId") }) }));
+    await run(() => api(`/api/partner/organizations/${organization.id}/athletes`, { method: "POST", body: JSON.stringify({ firstName: form.get("firstName"), lastName: form.get("lastName"), email: form.get("email"), position: form.get("position"), team: form.get("team"), plan, billingSource, creationMode, paymentLinkId: form.get("paymentLinkId") }) }));
+  }
+
+  async function sendAthleteInvite(athleteId: string) {
+    await run(() => api(`/api/partner/organizations/${organization.id}/athletes/${athleteId}/invite`, { method: "POST" }));
+  }
+
+  async function copyAthleteInvite(athleteId: string) {
+    setBusy(true); setMessage("");
+    try {
+      const data = await api(`/api/partner/organizations/${organization.id}/athletes/${athleteId}/invite`);
+      await navigator.clipboard.writeText(data.joinUrl);
+      setMessage("Secure athlete invitation link copied.");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "The invitation could not be copied."); }
+    finally { setBusy(false); }
   }
 
   async function connectStripe() {
@@ -109,6 +124,11 @@ export default function PartnerDashboardClient({ organization, stripeStatus, rol
         {tab === "athletes" && <section className="mt-6 grid gap-6 xl:grid-cols-[390px_1fr]">
           <form action={createAthlete} className="h-fit rounded-2xl border border-white/10 bg-[#0b131c] p-5">
             <div className="flex items-center gap-2"><Plus className="h-4 w-4 text-[var(--partner)]" /><h2 className="font-black">Create athlete</h2></div>
+            <p className="mt-2 text-xs leading-5 text-white/35">Choose who creates the first draft. Both options finish in the athlete&apos;s dashboard.</p>
+            <div className="mt-4 grid gap-2">
+              <button type="button" onClick={() => setCreationMode("athlete_builds")} className={`rounded-xl border p-3 text-left ${creationMode === "athlete_builds" ? "border-[var(--partner)] bg-[var(--partner)]/10" : "border-white/10"}`}><span className="flex items-center gap-2 text-sm font-black"><Users className="h-4 w-4" />Invite athlete to build</span><span className="mt-1 block text-xs leading-5 text-white/40">They securely claim the draft, add their details, and pay before publishing if needed.</span></button>
+              <button type="button" onClick={() => setCreationMode("organization_builds")} className={`rounded-xl border p-3 text-left ${creationMode === "organization_builds" ? "border-[var(--partner)] bg-[var(--partner)]/10" : "border-white/10"}`}><span className="flex items-center gap-2 text-sm font-black"><UserRoundPen className="h-4 w-4" />Build it for the athlete</span><span className="mt-1 block text-xs leading-5 text-white/40">Your team prepares the profile, then sends a private preview with checkout attached.</span></button>
+            </div>
             <div className="mt-5 grid grid-cols-2 gap-3"><input name="firstName" required placeholder="First name" className="rounded-lg border border-white/10 bg-black/25 px-3 py-3 text-sm outline-none" /><input name="lastName" required placeholder="Last name" className="rounded-lg border border-white/10 bg-black/25 px-3 py-3 text-sm outline-none" /></div>
             <input name="email" required type="email" placeholder="Athlete email" className="mt-3 w-full rounded-lg border border-white/10 bg-black/25 px-3 py-3 text-sm outline-none" />
             <div className="mt-3 grid grid-cols-2 gap-3"><input name="position" placeholder="Position" className="rounded-lg border border-white/10 bg-black/25 px-3 py-3 text-sm outline-none" /><input name="team" placeholder="Team" className="rounded-lg border border-white/10 bg-black/25 px-3 py-3 text-sm outline-none" /></div>
@@ -116,20 +136,21 @@ export default function PartnerDashboardClient({ organization, stripeStatus, rol
             <label className="mt-4 block text-xs font-bold text-white/45">Who pays Diamond Profile?</label>
             <select value={billingSource} onChange={(event) => setBillingSource(event.target.value as typeof billingSource)} className="mt-2 w-full rounded-lg border border-white/10 bg-[#0b131c] px-3 py-3 text-sm"><option value="customer_subscription">Athlete pays through my Stripe</option><option value="partner_paid">My organization pays wholesale</option></select>
             {billingSource === "customer_subscription" && <select name="paymentLinkId" required className="mt-3 w-full rounded-lg border border-white/10 bg-[#0b131c] px-3 py-3 text-sm"><option value="">Select {plan} checkout</option>{paymentLinks.filter((link) => link.tier === plan).map((link) => <option key={link.id} value={link.id}>{link.name}</option>)}</select>}
-            <button disabled={busy || whiteLabelLocked} className="mt-5 w-full rounded-lg bg-[var(--partner)] px-4 py-3 text-sm font-black disabled:opacity-50">{whiteLabelLocked ? "Activate to create athletes" : "Create and invite athlete"}</button>
+            <button disabled={busy || whiteLabelLocked} className="mt-5 w-full rounded-lg bg-[var(--partner)] px-4 py-3 text-sm font-black disabled:opacity-50">{whiteLabelLocked ? "Activate to create athletes" : creationMode === "athlete_builds" ? "Create athlete invitation" : "Create draft profile"}</button>
           </form>
           <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0b131c]">
             <div className="border-b border-white/10 p-5"><h2 className="font-black">Managed athletes</h2><p className="mt-1 text-xs text-white/35">Create, edit, publish, and manage billing access.</p></div>
             <div className="divide-y divide-white/[.07]">{athletes.map((athlete) => {
               const token = athlete.partner_profile_checkouts?.find((item) => item.active)?.token;
-              const checkoutPath = token ? `/p/${token}` : null;
+              const invitation = athlete.partner_invitations?.[0];
+              const invitationPath = invitation ? `/join/${invitation.token}` : null;
               const entitled = ["trialing", "active", "past_due", "canceling"].includes(athlete.partner_billing_status);
               const editPath = `/builder?mode=edit&playerId=${athlete.id}&returnTo=${encodeURIComponent(`/partner/${organization.id}`)}`;
               const editHref = builderHost ? `${builderHost}${editPath}` : editPath;
               const playerHost = organization.profile_domain && organization.profile_domain_status === "active"
                 ? `https://${partnerPlayerHostname(athlete.slug, organization.profile_domain)}`
                 : null;
-              return <article key={athlete.id} className="grid gap-4 p-5 md:grid-cols-[1fr_auto] md:items-center"><div><div className="flex flex-wrap items-center gap-2"><strong>{athlete.first_name} {athlete.last_name}</strong><select disabled={!canAdmin || busy} value={athlete.partner_plan} onChange={(event) => { const nextPlan = event.target.value as "pro" | "elite"; const paymentLinkId = paymentLinks.find((link) => link.tier === nextPlan)?.id; if (athlete.partner_billing_source === "customer_subscription" && !paymentLinkId) { setMessage(`Add a verified ${nextPlan} Payment Link first.`); return; } if (window.confirm(`Move ${athlete.first_name} to ${nextPlan === "elite" ? "Elite" : "Pro"}? Active customer subscriptions will be updated in Stripe.`)) void run(() => api(`/api/partner/organizations/${organization.id}/athletes/${athlete.id}`, { method: "PATCH", body: JSON.stringify({ action: "change_plan", plan: nextPlan, paymentLinkId }) })); }} className="rounded-full border border-white/10 bg-[#0b131c] px-2 py-1 text-[10px] font-bold uppercase text-white/55"><option value="pro">Pro</option><option value="elite">Elite</option></select><span className="rounded-full border border-white/10 px-2 py-1 text-[10px] font-bold uppercase text-white/45">{athlete.partner_billing_status}</span></div><p className="mt-1 text-xs text-white/35">{athlete.invited_email} · {athlete.is_published ? "Live" : "Draft"}</p></div><div className="flex flex-wrap gap-2">{checkoutPath && <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}${checkoutPath}`); setMessage("Athlete checkout link copied."); }} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold"><Copy className="mr-1 inline h-3 w-3" />Checkout</button>}{playerHost && athlete.is_published && <a href={playerHost} target="_blank" rel="noreferrer" className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold">Live site</a>}<Link href={editHref} className="rounded-lg bg-white px-3 py-2 text-xs font-black text-black">Edit profile</Link>{canAdmin && !entitled && athlete.partner_billing_source === "partner_paid" && <button onClick={() => run(() => api(`/api/partner/organizations/${organization.id}/athletes/${athlete.id}`, { method: "PATCH", body: JSON.stringify({ action: "activate" }) }))} className="rounded-lg border border-emerald-300/20 px-3 py-2 text-xs font-bold text-emerald-200">Activate</button>}{canAdmin && entitled && <button onClick={() => run(() => api(`/api/partner/organizations/${organization.id}/athletes/${athlete.id}`, { method: "PATCH", body: JSON.stringify({ action: "deactivate" }) }))} className="rounded-lg border border-red-400/20 px-3 py-2 text-xs font-bold text-red-200">Deactivate</button>}</div></article>;
+              return <article key={athlete.id} className="grid gap-4 p-5 md:grid-cols-[1fr_auto] md:items-center"><div><div className="flex flex-wrap items-center gap-2"><strong>{athlete.first_name} {athlete.last_name}</strong><select disabled={!canAdmin || busy} value={athlete.partner_plan} onChange={(event) => { const nextPlan = event.target.value as "pro" | "elite"; const paymentLinkId = paymentLinks.find((link) => link.tier === nextPlan)?.id; if (athlete.partner_billing_source === "customer_subscription" && !paymentLinkId) { setMessage(`Add a verified ${nextPlan} Payment Link first.`); return; } if (window.confirm(`Move ${athlete.first_name} to ${nextPlan === "elite" ? "Elite" : "Pro"}? Active customer subscriptions will be updated in Stripe.`)) void run(() => api(`/api/partner/organizations/${organization.id}/athletes/${athlete.id}`, { method: "PATCH", body: JSON.stringify({ action: "change_plan", plan: nextPlan, paymentLinkId }) })); }} className="rounded-full border border-white/10 bg-[#0b131c] px-2 py-1 text-[10px] font-bold uppercase text-white/55"><option value="pro">Pro</option><option value="elite">Elite</option></select><span className="rounded-full border border-white/10 px-2 py-1 text-[10px] font-bold uppercase text-white/45">{athlete.partner_billing_status}</span></div><p className="mt-1 text-xs text-white/35">{athlete.invited_email} · {athlete.is_published ? "Live" : "Draft"} · {athlete.partner_creation_mode === "organization_builds" ? "Built by your team" : "Athlete builds"}{invitation?.last_sent_at ? ` · Sent ${new Date(invitation.last_sent_at).toLocaleDateString()}` : " · Not sent"}</p></div><div className="flex flex-wrap gap-2">{invitation && <button disabled={busy} onClick={() => void sendAthleteInvite(athlete.id)} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold"><Mail className="mr-1 inline h-3 w-3" />{invitation.last_sent_at ? "Resend" : athlete.partner_creation_mode === "organization_builds" ? "Send preview" : "Send invite"}</button>}{invitation && <button disabled={busy} onClick={() => void copyAthleteInvite(athlete.id)} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold"><Copy className="mr-1 inline h-3 w-3" />Copy link</button>}{athlete.partner_creation_mode === "organization_builds" && invitationPath && <a href={invitationPath} target="_blank" rel="noreferrer" className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold"><Eye className="mr-1 inline h-3 w-3" />Preview</a>}{token && athlete.partner_billing_source === "customer_subscription" && <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/p/${token}`); setMessage("Athlete checkout link copied."); }} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold">Checkout</button>}{playerHost && athlete.is_published && <a href={playerHost} target="_blank" rel="noreferrer" className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold">Live site</a>}<Link href={editHref} className="rounded-lg bg-white px-3 py-2 text-xs font-black text-black">Edit profile</Link>{canAdmin && !entitled && athlete.partner_billing_source === "partner_paid" && <button onClick={() => run(() => api(`/api/partner/organizations/${organization.id}/athletes/${athlete.id}`, { method: "PATCH", body: JSON.stringify({ action: "activate" }) }))} className="rounded-lg border border-emerald-300/20 px-3 py-2 text-xs font-bold text-emerald-200">Activate</button>}{canAdmin && entitled && <button onClick={() => run(() => api(`/api/partner/organizations/${organization.id}/athletes/${athlete.id}`, { method: "PATCH", body: JSON.stringify({ action: "deactivate" }) }))} className="rounded-lg border border-red-400/20 px-3 py-2 text-xs font-bold text-red-200">Deactivate</button>}</div></article>;
             })}{athletes.length === 0 && <p className="p-10 text-center text-sm text-white/35">Create your first athlete to begin.</p>}</div>
           </div>
         </section>}

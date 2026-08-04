@@ -3,8 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAppUrl } from "@/lib/stripe";
 import { normalizeProfileSlug, profileSlugError } from "@/lib/slug";
-import { partnerBuilderHostname, partnerPlayerHostname } from "@/lib/domain-name";
-import { inviteOrFindUser, partnerAccess } from "@/lib/partners";
+import { partnerPlayerHostname } from "@/lib/domain-name";
+import { generatePartnerAthleteAccessLink, partnerAccess } from "@/lib/partners";
 import { syncPartnerWholesaleBilling } from "@/lib/partner-billing";
 import { attachProjectDomain } from "@/lib/vercel-domains";
 
@@ -41,6 +41,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ or
   const email = emailAddress(body.email);
   const plan = body.plan === "elite" ? "elite" : "pro";
   const billingSource = body.billingSource === "partner_paid" ? "partner_paid" : "customer_subscription";
+  const creationMode = body.creationMode === "organization_builds" ? "organization_builds" : "athlete_builds";
   const paymentLinkId = String(body.paymentLinkId || "");
   if (!firstName || !lastName || !email) return NextResponse.json({ error: "First name, last name, and a valid email are required." }, { status: 400 });
   const activatedWhiteLabel = access.organization.partnership_type === "white_label" && access.organization.status === "active";
@@ -59,9 +60,9 @@ export async function POST(request: NextRequest, context: { params: Promise<{ or
 
   let createdPlayerId: string | null = null;
   try {
-    const invited = await inviteOrFindUser(
+    const invited = await generatePartnerAthleteAccessLink(
       email,
-      `${access.organization.profile_domain && access.organization.profile_domain_status === "active" ? `https://${partnerBuilderHostname(access.organization.profile_domain)}` : getAppUrl()}/auth/callback?next=${encodeURIComponent("/dashboard")}`,
+      `${getAppUrl()}/auth/callback?next=${encodeURIComponent("/dashboard")}`,
       { partner_organization_id: organizationId, partner_organization_name: access.organization.name, partner_role: "athlete" },
     );
     const owned = await admin.from("players").select("id").eq("user_id", invited.user.id).maybeSingle();
@@ -83,6 +84,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ or
       partner_billing_source: billingSource,
       partner_billing_status: active ? "active" : "pending",
       partner_payment_link_id: paymentLink?.id || null,
+      partner_creation_mode: creationMode,
       billing_tier: active ? plan : "free",
       subscription_status: active ? "active" : "inactive",
       is_published: false,
@@ -99,15 +101,17 @@ export async function POST(request: NextRequest, context: { params: Promise<{ or
       }
     }
 
-    await admin.from("partner_invitations").insert({
+    const invitation = await admin.from("partner_invitations").insert({
       organization_id: organizationId,
       email,
       role: "athlete",
       player_id: inserted.data.id,
       invited_by: user.id,
       auth_user_id: invited.user.id,
-      status: invited.invited ? "pending" : "accepted",
-    });
+      status: "pending",
+      athlete_creation_mode: creationMode,
+    }).select("token").single();
+    if (invitation.error) throw invitation.error;
 
     let checkoutUrl: string | null = null;
     if (paymentLink) {
@@ -120,7 +124,12 @@ export async function POST(request: NextRequest, context: { params: Promise<{ or
       checkoutUrl = `${getAppUrl()}/p/${checkout.data.token}`;
     }
     if (active) await syncPartnerWholesaleBilling(organizationId);
-    return NextResponse.json({ athlete: inserted.data, checkoutUrl, invited: invited.invited });
+    return NextResponse.json({
+      athlete: inserted.data,
+      checkoutUrl,
+      invitationUrl: `${getAppUrl()}/join/${invitation.data.token}`,
+      creationMode,
+    });
   } catch (error) {
     if (createdPlayerId && billingSource === "partner_paid") {
       await admin.from("players").update({ partner_billing_status: "pending", billing_tier: "free", subscription_status: "inactive", is_published: false }).eq("id", createdPlayerId);

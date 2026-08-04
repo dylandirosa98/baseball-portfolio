@@ -99,6 +99,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     .eq("user_id", user.id)
     .maybeSingle();
   const playerRow = rawPlayer as DashboardPlayerRow | null;
+  const { data: pendingPartnerCheckout } = playerRow?.id
+    && playerRow.partner_billing_source === "customer_subscription"
+    && !["trialing", "active", "past_due", "canceling"].includes(playerRow.partner_billing_status)
+    ? await createAdminClient().from("partner_profile_checkouts").select("token").eq("player_id", playerRow.id).eq("active", true).maybeSingle()
+    : { data: null };
   const player = playerRow ? rowToPlayer(playerRow) : null;
   const tier = (playerRow?.billing_tier || "free") as BillingTier;
   const analyticsEnabled = tier === "pro" || tier === "elite";
@@ -313,6 +318,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300" />
                 <div><p className="font-bold">All set</p><p className="mt-0.5 text-emerald-50/65">{successMessage}</p></div>
               </div>
+            )}
+            {pendingPartnerCheckout?.token && (
+              <section className="flex flex-col justify-between gap-4 rounded-2xl border border-amber-300/25 bg-amber-300/[.08] p-5 sm:flex-row sm:items-center">
+                <div><p className="text-xs font-bold uppercase tracking-[.16em] text-amber-200">Draft saved</p><h2 className="mt-2 text-xl font-black">Activate your partner plan to publish</h2><p className="mt-1 max-w-2xl text-sm leading-6 text-white/50">You can keep editing now. Checkout uses your organization&apos;s connected Stripe account, and publishing unlocks as soon as payment is confirmed.</p></div>
+                <Link href={`/p/${pendingPartnerCheckout.token}`} className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-lg bg-white px-5 text-sm font-black text-black">Continue to checkout <ArrowRight className="h-4 w-4" /></Link>
+              </section>
             )}
             {!player ? (
               <section className="overflow-hidden rounded-2xl border border-[#e5162a]/30 bg-[linear-gradient(135deg,#172533,#0c1720)] p-6 sm:p-10">

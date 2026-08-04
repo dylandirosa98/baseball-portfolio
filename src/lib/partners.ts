@@ -138,6 +138,34 @@ export async function inviteOrFindUser(email: string, redirectTo: string, metada
   return { user: result.data.user, invited: true };
 }
 
+/**
+ * Creates (or finds) an athlete's Auth user without sending Supabase's generic
+ * invitation email. The caller can then send a fully branded message through
+ * the application's email provider.
+ */
+export async function generatePartnerAthleteAccessLink(
+  email: string,
+  redirectTo: string,
+  metadata: Record<string, unknown>,
+) {
+  const admin = createAdminClient();
+  const existing = await findAuthUserByEmail(email);
+  const result = await admin.auth.admin.generateLink({
+    type: existing ? "magiclink" : "invite",
+    email: email.trim().toLowerCase(),
+    options: { redirectTo, data: metadata },
+  });
+  if (result.error) throw result.error;
+  if (!result.data.user || !result.data.properties?.action_link) {
+    throw new Error("Supabase did not return a secure athlete access link.");
+  }
+  return {
+    user: result.data.user,
+    actionLink: result.data.properties.action_link,
+    newUser: !existing,
+  };
+}
+
 export async function claimPartnerInvitations(user: User) {
   if (!user.email) return 0;
   const admin = createAdminClient();
