@@ -40,7 +40,7 @@ function SimpleAdArtwork({ creative, format }: { creative: FacebookAdCreative; f
   const headlineSize = portrait ? 91 : 76;
 
   const brand = (dark = false) => <>
-    <image href="/diamond-profile-logo.png" x="54" y="42" width="58" height="58" preserveAspectRatio="xMidYMid meet" />
+    <image href={dark ? "/diamond-profile-logo.png" : "/diamond-profile-logo-light.png"} x="54" y="42" width="58" height="58" preserveAspectRatio="xMidYMid meet" />
     <text x="128" y="78" fill={dark ? "#fff" : "#0b0c0f"} fontFamily="Arial, Helvetica, sans-serif" fontSize="20" fontWeight="900" letterSpacing="1.2">DIAMOND PROFILE</text>
   </>;
   const footer = (dark = false) => <text x="54" y={bottom} fill={dark ? "#fff" : "#0b0c0f"} fillOpacity="0.56" fontFamily="Arial, Helvetica, sans-serif" fontSize="16" fontWeight="900" letterSpacing="2.4">DIAMONDPROFILE.APP</text>;

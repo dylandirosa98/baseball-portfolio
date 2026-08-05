@@ -58,7 +58,7 @@ export function InstagramArtwork({ slide, index, total }: { slide: InstagramSlid
       {Array.from({ length: 13 }, (_, i) => <line key={`v${i}`} x1={i * 90} y1="0" x2={i * 90} y2={SIZE} stroke={line} strokeOpacity="0.035" />)}
       {Array.from({ length: 13 }, (_, i) => <line key={`h${i}`} x1="0" y1={i * 90} x2={SIZE} y2={i * 90} stroke={line} strokeOpacity="0.035" />)}
 
-      <image href="/diamond-profile-logo.png" x="64" y="48" width="54" height="54" preserveAspectRatio="xMidYMid meet" />
+      <image href={dark ? "/diamond-profile-logo.png" : "/diamond-profile-logo-light.png"} x="64" y="48" width="54" height="54" preserveAspectRatio="xMidYMid meet" />
       <text x="132" y="82" fill={foreground} fontFamily="Arial, Helvetica, sans-serif" fontSize="21" fontWeight="900">DIAMOND PROFILE</text>
       <text x="1008" y="80" fill={muted} fontFamily="monospace" fontSize="16" fontWeight="700" textAnchor="end" letterSpacing="3">{String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}</text>
 
